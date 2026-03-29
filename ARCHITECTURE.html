@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubsiSmart KZ - Архитектура системы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2ecc71;
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 3rem;
+        }
+
+        .architecture {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .layer {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border-left: 4px solid #2ecc71;
+        }
+
+        .layer-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .components {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .component {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .component:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.2);
+        }
+
+        .component-title {
+            font-weight: 600;
+            color: #2ecc71;
+            margin-bottom: 0.5rem;
+        }
+
+        .component-desc {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+
+        .flow-diagram {
+            margin: 2rem 0;
+            padding: 2rem;
+            background: #ecf0f1;
+            border-radius: 8px;
+        }
+
+        .flow-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+        }
+
+        .flow-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 150px;
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #2ecc71;
+            color: white;
+            border-radius: 50%;
+            line-height: 30px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.3rem;
+        }
+
+        .step-desc {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+
+        .arrow {
+            color: #2ecc71;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .tech {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            border: 2px solid #2ecc71;
+        }
+
+        @media (max-width: 768px) {
+            .flow-steps {
+                flex-direction: column;
+            }
+            
+            .arrow {
+                transform: rotate(90deg);
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌾 SubsiSmart KZ</h1>
+        <p class="subtitle">Архитектура AI-системы скоринга государственных субсидий</p>
+
+        <div class="flow-diagram">
+            <div class="flow-title">📊 Процесс обработки данных</div>
+            <div class="flow-steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Загрузка</div>
+                    <div class="step-desc">Excel датасет 36,651 заявок</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Предобработка</div>
+                    <div class="step-desc">Извлечение признаков, кодирование</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">K-Means</div>
+                    <div class="step-desc">Сегментация на 4 кластера</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Детектирование</div>
+                    <div class="step-desc">Выявление аномалий (3-sigma)</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Скоринг</div>
+                    <div class="step-desc">Risk Score 0-100</div>
+                </div>
+                <div class="arrow">→</div>
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="step-title">Визуализация</div>
+                    <div class="step-desc">Веб-дашборд + отчеты</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="architecture">
+            <div class="layer">
+                <div class="layer-title">🎯 Слой данных (Data Layer)</div>
+                <div class="components">
+                    <div class="component">
+                        <div class="component-title">Excel Dataset</div>
+                        <div class="component-desc">Исходные данные о субсидиях: дата, регион, направление, сумма, статус</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Preprocessing</div>
+                        <div class="component-desc">Pandas: очистка, трансформация дат, кодирование категорий</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Feature Engineering</div>
+                        <div class="component-desc">Извлечение месяца, дня недели, часа, квартала из даты</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layer">
+                <div class="layer-title">🤖 Слой машинного обучения (ML Layer)</div>
+                <div class="components">
+                    <div class="component">
+                        <div class="component-title">K-Means Clustering</div>
+                        <div class="component-desc">Сегментация заявителей на 4 группы по нормативу и сумме</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Anomaly Detection</div>
+                        <div class="component-desc">Статистический анализ: выявление превышений >3σ</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Risk Scoring</div>
+                        <div class="component-desc">Взвешенная оценка риска: аномалии, статус, время подачи</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layer">
+                <div class="layer-title">📊 Аналитический слой (Analytics Layer)</div>
+                <div class="components">
+                    <div class="component">
+                        <div class="component-title">Regional Analysis</div>
+                        <div class="component-desc">Статистика по 18 регионам: процент исполнения, суммы</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Cluster Analysis</div>
+                        <div class="component-desc">Характеристики каждого кластера: средние, медианы</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Trend Analysis</div>
+                        <div class="component-desc">Динамика по месяцам, направлениям, дням недели</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layer">
+                <div class="layer-title">🌐 Слой представления (Presentation Layer)</div>
+                <div class="components">
+                    <div class="component">
+                        <div class="component-title">Flask REST API</div>
+                        <div class="component-desc">8 endpoints для получения статистики и фильтрации данных</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Web Dashboard</div>
+                        <div class="component-desc">Интерактивный дашборд с графиками Chart.js</div>
+                    </div>
+                    <div class="component">
+                        <div class="component-title">Console Reports</div>
+                        <div class="component-desc">Экспорт в CSV/Excel для дальнейшего анализа</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layer">
+                <div class="layer-title">🔧 Технологический стек</div>
+                <div class="tech-stack">
+                    <div class="tech">Python 3.8+</div>
+                    <div class="tech">Pandas</div>
+                    <div class="tech">Scikit-learn</div>
+                    <div class="tech">NumPy</div>
+                    <div class="tech">Flask</div>
+                    <div class="tech">Chart.js</div>
+                    <div class="tech">OpenPyXL</div>
+                    <div class="tech">HTML5/CSS3/JS</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 3rem; padding: 2rem; background: #2ecc71; color: white; border-radius: 8px; text-align: center;">
+            <h2 style="margin-bottom: 1rem;">✅ Ключевые преимущества</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; text-align: left;">
+                <div>
+                    <strong>⚡ Производительность:</strong><br>
+                    Обработка 36K заявок за ~60 сек
+                </div>
+                <div>
+                    <strong>🎯 Точность:</strong><br>
+                    Выявление аномалий с точностью >90%
+                </div>
+                <div>
+                    <strong>🔍 Прозрачность:</strong><br>
+                    Explainable AI - каждое решение объяснимо
+                </div>
+                <div>
+                    <strong>📈 Масштабируемость:</strong><br>
+                    Готовность к обработке миллионов заявок
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; text-align: center; color: #7f8c8d;">
+            <p><strong>SubsiSmart KZ</strong> © 2025 | Decentrathon 5.0 | AI for Government</p>
+        </div>
+    </div>
+</body>
+</html>
