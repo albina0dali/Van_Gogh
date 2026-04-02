@@ -20,24 +20,46 @@ SubsiSmartKZ/
     └── index.html         # Веб-интерфейс
 ```
 
-## ⚡ Быстрый запуск (3 шага)
+## ⚡ Быстрый запуск
 
-### 1. Распаковать и установить
-```bash
-unzip SubsiSmartKZ.zip
-cd SubsiSmartKZ
-./setup.sh
+### Windows (PowerShell, рекомендовано)
+
+```powershell
+cd D:\SubsiSmartKZ
+
+# Создать новое виртуальное окружение
+py -3.12 -m venv .venv_clean
+
+# Активировать окружение
+.\.venv_clean\Scripts\Activate.ps1
+
+# Установить зависимости
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+# Запуск веб-интерфейса
+python app.py
 ```
 
-### 2. Запустить консольный анализ
-```bash
+Откройте в браузере: http://localhost:5000
+
+### Быстрый запуск консольного анализа
+
+```powershell
+cd D:\SubsiSmartKZ
+.\.venv_clean\Scripts\Activate.ps1
 python scoring_engine.py
 ```
 
-### 3. Или запустить веб-интерфейс
+### Linux / macOS
+
 ```bash
+cd SubsiSmartKZ
+python3 -m venv .venv_clean
+source .venv_clean/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 python app.py
-# Откройте в браузере: http://localhost:5000
 ```
 
 ## 🎯 Что делает система
