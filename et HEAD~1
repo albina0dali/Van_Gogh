@@ -1,0 +1,39 @@
+R095	Van_Gogh-main/.env.example	.env.example
+M	.gitignore
+M	API_DOCS.md
+D	ARCHITECTURE.html
+R100	Van_Gogh-main/DEVELOPMENT_SUMMARY.md	DEVELOPMENT_SUMMARY.md
+D	PRESENTATION.md
+M	QUICKSTART.md
+R100	Van_Gogh-main/README_NEW.md	README_NEW.md
+D	Van_Gogh-main/.env
+D	Van_Gogh-main/.gitignore
+D	Van_Gogh-main/API_DOCS.md
+D	Van_Gogh-main/EXAMPLES.md
+D	Van_Gogh-main/QUICKSTART.md
+D	Van_Gogh-main/README.md
+D	Van_Gogh-main/app.py
+D	"Van_Gogh-main/data/\320\222\321\213\320\263\321\200\321\203\320\267\320\272\320\260_\320\277\320\276_\320\262\321\213\320\264\320\260\320\275\320\275\321\213\320\274_\321\201\321\203\320\261\321\201\320\270\320\264\320\270\321\217\320\274_2025_\320\263\320\276\320\264__\320\276\320\261\320\265\320\267\320\273\320\270\321\207_.xlsx"
+D	Van_Gogh-main/subsismart_kz_architecture.svg
+D	Van_Gogh-main/templates/index.html
+R100	Van_Gogh-main/api_server.py	api_server.py
+A	app.py
+R090	Van_Gogh-main/config.json	config.json
+R100	Van_Gogh-main/config_manager.py	config_manager.py
+R100	Van_Gogh-main/data_loader.py	data_loader.py
+R100	Van_Gogh-main/database_models.py	database_models.py
+D	demo.py
+R100	Van_Gogh-main/eda_analysis.py	eda_analysis.py
+R100	Van_Gogh-main/explainability.py	explainability.py
+R100	Van_Gogh-main/extract_data.py	extract_data.py
+R100	Van_Gogh-main/feature_engineer.py	feature_engineer.py
+R100	Van_Gogh-main/main_pipeline.py	main_pipeline.py
+R100	Van_Gogh-main/metrics/model_metrics.json	metrics/model_metrics.json
+R100	Van_Gogh-main/model_trainer.py	model_trainer.py
+R088	Van_Gogh-main/requirements.txt	requirements.txt
+D	scoring_engine.py
+D	setup.sh
+R100	Van_Gogh-main/subsidy_research.ipynb	subsidy_research.ipynb
+M	templates/index.html
+R100	Van_Gogh-main/test_system.py	test_system.py
+R100	Van_Gogh-main/utilities.py	utilities.py
