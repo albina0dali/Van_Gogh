@@ -1,35 +1,52 @@
 # Van_Gogh
 
-ML-проект для скоринга заявок на субсидии.
+Система ML-скоринга заявок на субсидии с API, пайплайном обучения и демо-интерфейсом.
 
-## Что Внутри
+## Возможности
 
-- API для подачи и оценки заявок
-- Пайплайн подготовки данных и обучения моделей
-- Отчеты и метрики качества
-- Веб-интерфейс для демо
+- Оценка заявок и формирование short-list
+- Обучение и переобучение моделей
+- Объяснимость предсказаний
+- Генерация отчетов по регионам
+- Веб-интерфейс для просмотра результатов
+
+## Основные Компоненты
+
+- API: `api_server.py`
+- Скоринг: `scoring_engine.py`
+- Пайплайн: `main_pipeline.py`
+- Обучение: `model_trainer.py`
+- Демо: `demo.py`, `templates/index.html`
 
 ## Быстрый Старт
 
-Основная документация находится во вложенной директории проекта:
-
-- [README](Van_Gogh-main/README.md)
-- [QUICKSTART](Van_Gogh-main/QUICKSTART.md)
-- [API_DOCS](Van_Gogh-main/API_DOCS.md)
-- [EXAMPLES](Van_Gogh-main/EXAMPLES.md)
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python main_pipeline.py
+python api_server.py
+```
 
 ## Структура
 
 ```text
-Van_Gogh-main/
-  api_server.py
-  main_pipeline.py
-  model_trainer.py
-  templates/
-  data/
-  models/
+.
+|- api_server.py
+|- main_pipeline.py
+|- model_trainer.py
+|- scoring_engine.py
+|- data/
+|- results/
+|- templates/
+|- metrics/
+|- ARCHITECTURE.html
+`- PRESENTATION.md
 ```
 
-## Назначение Репозитория
+## Документация
 
-Этот корневой README используется как главная страница репозитория на GitHub и ссылается на актуальную документацию в папке `Van_Gogh-main`.
+- Архитектура: `ARCHITECTURE.html`
+- Презентация: `PRESENTATION.md`
+
+Главная страница GitHub поддерживается этим файлом `README.md`.
