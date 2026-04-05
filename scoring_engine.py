@@ -1,287 +1,467 @@
 """
 SubsiSmart KZ - AI-скоринг для государственных субсидий Казахстана
-Автор: Команда разработки SubsiSmart KZ
-Дата: Март 2025
+Версия 2.0 — Merit-based scoring с explainability
 """
 
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings('ignore')
 
+
+# Приоритеты направлений (по гос. стратегии АПК Казахстана)
+DIRECTION_PRIORITY = {
+    'Субсидирование в скотоводстве': 1.0,
+    'Субсидирование в овцеводстве': 0.9,
+    'Субсидирование в коневодстве': 0.85,
+    'Субсидирование в верблюдоводстве': 0.85,
+    'Субсидирование в козоводстве': 0.8,
+    'Субсидирование затрат по искусственному осеменению': 0.75,
+    'Субсидирование в птицеводстве': 0.7,
+    'Субсидирование в пчеловодстве': 0.65,
+    'Субсидирование в свиноводстве': 0.6,
+}
+
+
 class SubsidyScoring:
-    """Класс для AI-скоринга заявок на субсидии"""
+    """
+    AI-система merit-based скоринга заявок на субсидии.
     
+    Логика: вместо 'кто первый подал' — оцениваем реальную
+    эффективность хозяйства по историческим данным.
+    """
+
     def __init__(self):
         self.label_encoders = {}
         self.kmeans_model = None
         self.scaler = StandardScaler()
-        
+        self.merit_scaler = MinMaxScaler(feature_range=(0, 100))
+        self.df_full = None  # полный датасет для истории
+
+    # ─────────────────────────────────────────────
+    # 1. ПРЕДОБРАБОТКА
+    # ─────────────────────────────────────────────
     def preprocess_data(self, df):
-        """
-        Функция предобработки данных
-        
-        Преобразует дату в признаки (месяц, день недели),
-        кодирует 'Область' и 'Направление водства' через LabelEncoder
-        """
-        # Создаем копию датафрейма
-        df_processed = df.copy()
-        
-        # Удаляем пустые столбцы
-        df_processed = df_processed.drop(['Unnamed: 2', 'Unnamed: 3'], axis=1, errors='ignore')
-        
-        # Удаляем строки с NaN
-        df_processed = df_processed.dropna(subset=['Дата поступления', 'Область', 
-                                                     'Направление водства', 'Статус заявки'])
-        
-        # Преобразование даты
-        df_processed['Дата поступления'] = pd.to_datetime(df_processed['Дата поступления'], 
-                                                           format='%d.%m.%Y %H:%M:%S', 
-                                                           errors='coerce')
-        
-        # Извлекаем признаки из даты
-        df_processed['Месяц'] = df_processed['Дата поступления'].dt.month
-        df_processed['День_недели'] = df_processed['Дата поступления'].dt.dayofweek
-        df_processed['Час'] = df_processed['Дата поступления'].dt.hour
-        df_processed['Квартал'] = df_processed['Дата поступления'].dt.quarter
-        
-        # Кодирование категориальных признаков
-        categorical_features = ['Область', 'Направление водства', 'Статус заявки']
-        
-        for feature in categorical_features:
+        df = df.copy()
+        df = df.drop(['Unnamed: 2', 'Unnamed: 3'], axis=1, errors='ignore')
+        df = df.dropna(subset=['Дата поступления', 'Область',
+                                'Направление водства', 'Статус заявки'])
+
+        # Парсим дату
+        df['Дата поступления'] = pd.to_datetime(
+            df['Дата поступления'], format='%d.%m.%Y %H:%M:%S', errors='coerce'
+        )
+        df = df.dropna(subset=['Дата поступления'])
+
+        # Признаки из даты
+        df['Месяц']       = df['Дата поступления'].dt.month
+        df['День_недели'] = df['Дата поступления'].dt.dayofweek
+        df['Час']         = df['Дата поступления'].dt.hour
+        df['Квартал']     = df['Дата поступления'].dt.quarter
+
+        # Кол-во голов скота = Причитающая сумма / Норматив
+        df['Норматив'] = pd.to_numeric(df['Норматив'], errors='coerce').fillna(0)
+        df['Причитающая сумма'] = pd.to_numeric(
+            df['Причитающая сумма'], errors='coerce').fillna(0)
+
+        df['Кол_голов'] = np.where(
+            df['Норматив'] > 0,
+            (df['Причитающая сумма'] / df['Норматив']).round(0),
+            0
+        )
+
+        # Кодирование категорий
+        for feat in ['Область', 'Направление водства', 'Статус заявки']:
             le = LabelEncoder()
-            df_processed[f'{feature}_encoded'] = le.fit_transform(df_processed[feature].astype(str))
-            self.label_encoders[feature] = le
-        
-        return df_processed
-    
-    def create_kmeans_segments(self, df, n_clusters=4):
+            df[f'{feat}_encoded'] = le.fit_transform(df[feat].astype(str))
+            self.label_encoders[feat] = le
+
+        self.df_full = df.copy()
+        return df
+
+    # ─────────────────────────────────────────────
+    # 2. ИСТОРИЯ ЗАЯВИТЕЛЯ (по Акимату как прокси)
+    # ─────────────────────────────────────────────
+    def build_applicant_history(self, df):
         """
-        Создает модель K-Means для сегментации заявителей на группы
-        по признакам 'Норматив' и 'Причитающая сумма'
+        Строим профиль каждого заявителя на основе его истории.
+        Используем Акимат + Район хозяйства как идентификатор.
         """
-        # Подготовка данных для кластеризации
-        features_for_clustering = df[['Норматив', 'Причитающая сумма']].copy()
-        
-        # Удаляем строки с NaN
-        features_for_clustering = features_for_clustering.dropna()
-        
-        # Стандартизация данных
-        features_scaled = self.scaler.fit_transform(features_for_clustering)
-        
-        # Обучение модели K-Means
-        self.kmeans_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        clusters = self.kmeans_model.fit_predict(features_scaled)
-        
-        # Добавляем кластеры в датафрейм
-        df.loc[features_for_clustering.index, 'Кластер'] = clusters
-        
-        # Анализ кластеров
-        cluster_analysis = df.groupby('Кластер').agg({
-            'Норматив': ['mean', 'median', 'std'],
-            'Причитающая сумма': ['mean', 'median', 'std'],
-            'Статус заявки': lambda x: (x == 'Исполнена').sum() / len(x) * 100
-        }).round(2)
-        
-        return df, cluster_analysis
-    
+        df['applicant_id'] = (
+            df['Акимат'].astype(str) + '|' +
+            df['Район хозяйства'].astype(str)
+        )
+
+        history = df.groupby('applicant_id').agg(
+            total_apps        = ('Статус заявки', 'count'),
+            executed_count    = ('Статус заявки', lambda x: (x == 'Исполнена').sum()),
+            approved_count    = ('Статус заявки', lambda x: (x == 'Одобрена').sum()),
+            rejected_count    = ('Статус заявки', lambda x: (x == 'Отклонена').sum()),
+            withdrawn_count   = ('Статус заявки', lambda x: (x == 'Отозвано').sum()),
+            avg_amount        = ('Причитающая сумма', 'mean'),
+            total_amount      = ('Причитающая сумма', 'sum'),
+            avg_heads         = ('Кол_голов', 'mean'),
+        ).reset_index()
+
+        # Процент успешных заявок
+        history['success_rate'] = (
+            (history['executed_count'] + history['approved_count']) /
+            history['total_apps'] * 100
+        ).round(1)
+
+        # Процент отклонённых
+        history['rejection_rate'] = (
+            history['rejected_count'] / history['total_apps'] * 100
+        ).round(1)
+
+        df = df.merge(history, on='applicant_id', how='left')
+        return df, history
+
+    # ─────────────────────────────────────────────
+    # 3. MERIT-BASED СКОРИНГ (0–100, выше = лучше)
+    # ─────────────────────────────────────────────
+    def calculate_merit_score(self, df):
+        """
+        Merit Score показывает, насколько заявитель
+        заслуживает субсидии на основе данных.
+
+        Компоненты:
+          A. История успеха       (0–40 баллов)
+          B. Масштаб хозяйства    (0–25 баллов)
+          C. Приоритет направления(0–20 баллов)
+          D. Опыт (кол-во заявок) (0–15 баллов)
+          E. Штраф за отказы      (0 до -20 баллов)
+        """
+        df = df.copy()
+
+        # A. История успеха (0–40)
+        df['score_history'] = (df['success_rate'].fillna(0) / 100 * 40).round(2)
+
+        # B. Масштаб хозяйства — нормализуем кол-во голов (0–25)
+        max_heads = df['avg_heads'].quantile(0.95)  # отсекаем выбросы сверху
+        df['heads_capped'] = df['avg_heads'].clip(upper=max_heads)
+        df['score_scale'] = (
+            df['heads_capped'] / max_heads * 25
+        ).fillna(0).round(2)
+
+        # C. Приоритет направления (0–20)
+        df['direction_priority'] = df['Направление водства'].map(
+            DIRECTION_PRIORITY).fillna(0.5)
+        df['score_direction'] = (df['direction_priority'] * 20).round(2)
+
+        # D. Опыт заявителя (0–15)
+        max_apps = df['total_apps'].quantile(0.95)
+        df['score_experience'] = (
+            df['total_apps'].clip(upper=max_apps) / max_apps * 15
+        ).fillna(0).round(2)
+
+        # E. Штраф за отказы (0 до -20)
+        df['score_penalty'] = -(df['rejection_rate'].fillna(0) / 100 * 20).round(2)
+
+        # Итоговый Merit Score
+        df['Merit_Score'] = (
+            df['score_history'] +
+            df['score_scale'] +
+            df['score_direction'] +
+            df['score_experience'] +
+            df['score_penalty']
+        ).clip(0, 100).round(1)
+
+        return df
+
+    # ─────────────────────────────────────────────
+    # 4. EXPLAINABILITY — почему такой скор
+    # ─────────────────────────────────────────────
+    def explain_score(self, row):
+        """
+        Возвращает человекочитаемое объяснение скора.
+        """
+        reasons = []
+
+        # История
+        if row.get('score_history', 0) >= 30:
+            reasons.append(f"✅ Жоғары орындалу тарихы ({row.get('success_rate', 0):.0f}%)")
+        elif row.get('score_history', 0) >= 15:
+            reasons.append(f"🟡 Орташа орындалу тарихы ({row.get('success_rate', 0):.0f}%)")
+        else:
+            reasons.append(f"🔴 Төмен орындалу тарихы ({row.get('success_rate', 0):.0f}%)")
+
+        # Масштаб
+        if row.get('score_scale', 0) >= 18:
+            reasons.append(f"✅ Ірі шаруашылық (~{row.get('avg_heads', 0):.0f} бас)")
+        elif row.get('score_scale', 0) >= 8:
+            reasons.append(f"🟡 Орта шаруашылық (~{row.get('avg_heads', 0):.0f} бас)")
+        else:
+            reasons.append(f"⚪ Кіші шаруашылық (~{row.get('avg_heads', 0):.0f} бас)")
+
+        # Направление
+        prio = row.get('direction_priority', 0)
+        if prio >= 0.9:
+            reasons.append(f"✅ Жоғары басымдықты бағыт (скотоводство/овцеводство)")
+        elif prio >= 0.7:
+            reasons.append(f"🟡 Орташа басымдықты бағыт")
+        else:
+            reasons.append(f"⚪ Стандартты бағыт")
+
+        # Штраф
+        if row.get('score_penalty', 0) < -10:
+            reasons.append(
+                f"🔴 Бұрын {row.get('rejected_count', 0)} рет қабылданбаған өтінім бар"
+            )
+        elif row.get('score_penalty', 0) < -5:
+            reasons.append(
+                f"🟡 Бірнеше қабылданбаған өтінім бар"
+            )
+
+        # Тәжірибе
+        if row.get('total_apps', 0) >= 5:
+            reasons.append(f"✅ Тәжірибелі өтініш беруші ({row.get('total_apps', 0)} өтінім)")
+
+        return ' | '.join(reasons)
+
+    # ─────────────────────────────────────────────
+    # 5. АНОМАЛИИ — исправленная логика
+    # ─────────────────────────────────────────────
     def detect_anomalies(self, df):
         """
-        Проверка на аномалии: если 'Причитающая сумма' превышает 'Норматив' 
-        более чем на 3 стандартных отклонения в рамках одной категории,
-        помечает заявку как 'High Risk'
+        Аномалии определяем только по статистике ВНУТРИ направления,
+        используя только 3-sigma по нормализованной сумме на голову.
+        НЕ используем соотношение сумма/норматив (оно всегда большое).
         """
-        # Создаем колонку для рисков
+        df = df.copy()
         df['Risk_Level'] = 'Normal'
-        
-        # Вычисляем разницу между причитающей суммой и нормативом
-        df['Превышение'] = df['Причитающая сумма'] - df['Норматив']
-        
-        # Группируем по направлению и вычисляем статистику
+        df['risk_reasons'] = ''
+
         for direction in df['Направление водства'].unique():
             mask = df['Направление водства'] == direction
-            subset = df[mask]
-            
-            if len(subset) > 1:
-                mean_excess = subset['Превышение'].mean()
-                std_excess = subset['Превышение'].std()
-                
-                # Если превышение больше 3 стандартных отклонений
-                threshold = mean_excess + 3 * std_excess
-                high_risk_mask = (df['Направление водства'] == direction) & (df['Превышение'] > threshold)
-                df.loc[high_risk_mask, 'Risk_Level'] = 'High Risk'
-                
-                # Дополнительная проверка: слишком большая причитающая сумма относительно норматива
-                ratio_threshold = 3  # Если сумма в 3+ раза больше норматива
-                ratio_mask = (df['Направление водства'] == direction) & \
-                            (df['Причитающая сумма'] > df['Норматив'] * ratio_threshold)
-                df.loc[ratio_mask, 'Risk_Level'] = 'High Risk'
-        
-        # Проверка на нулевую причитающую сумму при ненулевом нормативе
-        zero_sum_mask = (df['Причитающая сумма'] == 0) & (df['Норматив'] > 0)
-        df.loc[zero_sum_mask, 'Risk_Level'] = 'Medium Risk'
-        
+            subset = df[mask].copy()
+
+            if len(subset) < 10:
+                continue
+
+            # Аномалия по сумме на голову
+            amount_per_head = subset['Причитающая сумма'] / subset['Кол_голов'].replace(0, np.nan)
+            amount_per_head = amount_per_head.fillna(0)
+
+            mean_aph = amount_per_head.mean()
+            std_aph  = amount_per_head.std()
+
+            if std_aph > 0:
+                threshold_high = mean_aph + 3 * std_aph
+                threshold_med  = mean_aph + 2 * std_aph
+
+                high_mask = mask & (
+                    subset['Причитающая сумма'].div(
+                        subset['Кол_голов'].replace(0, np.nan)
+                    ).fillna(0) > threshold_high
+                ).reindex(df.index, fill_value=False)
+
+                med_mask = mask & (
+                    subset['Причитающая сумма'].div(
+                        subset['Кол_голов'].replace(0, np.nan)
+                    ).fillna(0) > threshold_med
+                ).reindex(df.index, fill_value=False) & ~high_mask
+
+                df.loc[high_mask, 'Risk_Level'] = 'High Risk'
+                df.loc[high_mask, 'risk_reasons'] = 'Бас басына сумма нормадан 3σ жоғары'
+                df.loc[med_mask, 'Risk_Level'] = 'Medium Risk'
+                df.loc[med_mask, 'risk_reasons'] = 'Бас басына сумма нормадан 2σ жоғары'
+
+        # Нулевая сумма при ненулевом нормативе
+        zero_mask = (df['Причитающая сумма'] == 0) & (df['Норматив'] > 0)
+        df.loc[zero_mask, 'Risk_Level'] = 'Medium Risk'
+        df.loc[zero_mask, 'risk_reasons'] = 'Норматив бар, бірақ сумма нөл'
+
         return df
-    
-    def regional_report(self, df):
-        """
-        Выводит отчет: какие регионы имеют самый высокий процент 'Исполненных' заявок
-        """
-        # Группируем по областям
-        regional_stats = df.groupby('Область').agg({
-            'Статус заявки': [
-                'count',
-                lambda x: (x == 'Исполнена').sum(),
-                lambda x: (x == 'Исполнена').sum() / len(x) * 100,
-                lambda x: (x == 'Одобрена').sum() / len(x) * 100,
-                lambda x: (x == 'Отклонена').sum() / len(x) * 100
-            ],
-            'Причитающая сумма': ['sum', 'mean']
-        }).round(2)
-        
-        # Переименовываем колонки
-        regional_stats.columns = [
-            'Всего заявок', 
-            'Исполнено', 
-            'Процент исполненных',
-            'Процент одобренных',
-            'Процент отклоненных',
-            'Общая сумма субсидий',
-            'Средняя сумма'
-        ]
-        
-        # Сортируем по проценту исполненных заявок
-        regional_stats = regional_stats.sort_values('Процент исполненных', ascending=False)
-        
-        return regional_stats
-    
-    def calculate_risk_score(self, df):
-        """
-        Вычисляет общий risk score для каждой заявки
-        на основе нескольких факторов
-        """
-        df['Risk_Score'] = 0
-        
-        # Фактор 1: Аномальное превышение суммы
-        df.loc[df['Risk_Level'] == 'High Risk', 'Risk_Score'] += 50
-        df.loc[df['Risk_Level'] == 'Medium Risk', 'Risk_Score'] += 25
-        
-        # Фактор 2: Статус заявки
-        df.loc[df['Статус заявки'] == 'Отклонена', 'Risk_Score'] += 30
-        df.loc[df['Статус заявки'] == 'Отозвано', 'Risk_Score'] += 20
-        
-        # Фактор 3: Необычное время подачи (ночное время)
-        df.loc[(df['Час'] >= 0) & (df['Час'] <= 6), 'Risk_Score'] += 10
-        
-        # Фактор 4: Очень большая причитающая сумма (топ 5%)
-        threshold_95 = df['Причитающая сумма'].quantile(0.95)
-        df.loc[df['Причитающая сумма'] > threshold_95, 'Risk_Score'] += 15
-        
-        return df
-    
-    def generate_full_report(self, df):
-        """
-        Генерирует полный отчет по всем метрикам
-        """
-        report = {
-            'total_applications': len(df),
-            'status_distribution': df['Статус заявки'].value_counts().to_dict(),
-            'total_subsidy_amount': df['Причитающая сумма'].sum(),
-            'average_subsidy': df['Причитающая сумма'].mean(),
-            'high_risk_applications': (df['Risk_Level'] == 'High Risk').sum(),
-            'regions_count': df['Область'].nunique(),
-            'directions_count': df['Направление водства'].nunique(),
+
+    # ─────────────────────────────────────────────
+    # 6. K-MEANS КЛАСТЕРИЗАЦИЯ
+    # ─────────────────────────────────────────────
+    def create_kmeans_segments(self, df, n_clusters=4):
+        features = df[['Норматив', 'Причитающая сумма', 'Кол_голов']].copy().fillna(0)
+        features_scaled = self.scaler.fit_transform(features)
+
+        self.kmeans_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        df['Кластер'] = self.kmeans_model.fit_predict(features_scaled)
+
+        # Даём читаемые названия кластерам по среднему размеру хозяйства
+        cluster_means = df.groupby('Кластер')['Кол_голов'].mean().sort_values()
+        labels = ['🟢 Кіші', '🔵 Орташа', '🟡 Ірі', '🔴 Мега']
+        cluster_label_map = {
+            cid: labels[i] for i, cid in enumerate(cluster_means.index)
         }
-        
-        return report
+        df['Кластер_атауы'] = df['Кластер'].map(cluster_label_map)
+
+        cluster_analysis = df.groupby('Кластер_атауы').agg({
+            'Норматив':          'mean',
+            'Причитающая сумма': 'mean',
+            'Кол_голов':         'mean',
+            'Merit_Score':       'mean',
+            'Статус заявки':     'count',
+        }).round(1)
+
+        return df, cluster_analysis
+
+    # ─────────────────────────────────────────────
+    # 7. SHORTLIST — топ кандидаты для комиссии
+    # ─────────────────────────────────────────────
+    def generate_shortlist(self, df, top_n=20, direction=None, region=None):
+        """
+        Формирует список лучших кандидатов для рассмотрения комиссией.
+        Фильтрует только текущие заявки (Получена / Одобрена).
+        """
+        # Берём только активные заявки
+        active_statuses = ['Получена', 'Одобрена', 'Сформировано поручение']
+        candidates = df[df['Статус заявки'].isin(active_statuses)].copy()
+
+        if direction:
+            candidates = candidates[candidates['Направление водства'] == direction]
+        if region:
+            candidates = candidates[candidates['Область'] == region]
+
+        # Сортируем по Merit Score
+        candidates = candidates.sort_values('Merit_Score', ascending=False)
+
+        cols = [
+            'Номер заявки', 'Дата поступления', 'Область',
+            'Район хозяйства', 'Направление водства',
+            'Норматив', 'Причитающая сумма', 'Кол_голов',
+            'Merit_Score', 'score_history', 'score_scale',
+            'score_direction', 'score_experience', 'score_penalty',
+            'success_rate', 'total_apps', 'rejected_count',
+            'Risk_Level', 'Explainability', 'Кластер_атауы'
+        ]
+        cols = [c for c in cols if c in candidates.columns]
+
+        return candidates[cols].head(top_n)
+
+    # ─────────────────────────────────────────────
+    # 8. РЕГИОНАЛЬНЫЙ ОТЧЁТ
+    # ─────────────────────────────────────────────
+    def regional_report(self, df):
+        regional_stats = df.groupby('Область').agg(
+            Всего_заявок            = ('Статус заявки', 'count'),
+            Исполнено               = ('Статус заявки', lambda x: (x == 'Исполнена').sum()),
+            Одобрено                = ('Статус заявки', lambda x: (x == 'Одобрена').sum()),
+            Отклонено               = ('Статус заявки', lambda x: (x == 'Отклонена').sum()),
+            Общая_сумма             = ('Причитающая сумма', 'sum'),
+            Средняя_сумма           = ('Причитающая сумма', 'mean'),
+            Средний_Merit_Score     = ('Merit_Score', 'mean'),
+        ).round(1)
+
+        regional_stats['Процент_исполненных'] = (
+            regional_stats['Исполнено'] / regional_stats['Всего_заявок'] * 100
+        ).round(1)
+
+        return regional_stats.sort_values('Средний_Merit_Score', ascending=False)
+
+    # ─────────────────────────────────────────────
+    # 9. ПОЛНЫЙ ПАЙПЛАЙН
+    # ─────────────────────────────────────────────
+    def run_full_pipeline(self, df):
+        print("🔧 Шаг 1: Предобработка данных...")
+        df = self.preprocess_data(df)
+        print(f"   ✓ {len(df):,} записей обработано")
+
+        print("📊 Шаг 2: Построение истории заявителей...")
+        df, history = self.build_applicant_history(df)
+        print(f"   ✓ {len(history):,} уникальных заявителей")
+
+        print("🎯 Шаг 3: Merit-based скоринг...")
+        df = self.calculate_merit_score(df)
+        print(f"   ✓ Merit Score: мин={df['Merit_Score'].min():.1f}, "
+              f"макс={df['Merit_Score'].max():.1f}, "
+              f"среднее={df['Merit_Score'].mean():.1f}")
+
+        print("🔍 Шаг 4: Explainability...")
+        df['Explainability'] = df.apply(self.explain_score, axis=1)
+        print("   ✓ Объяснения сформированы для каждой заявки")
+
+        print("🚨 Шаг 5: Детектирование аномалий...")
+        df = self.detect_anomalies(df)
+        risk_counts = df['Risk_Level'].value_counts()
+        print(f"   ✓ Normal: {risk_counts.get('Normal', 0):,}")
+        print(f"   ✓ Medium Risk: {risk_counts.get('Medium Risk', 0):,}")
+        print(f"   ✓ High Risk: {risk_counts.get('High Risk', 0):,}")
+
+        print("🔵 Шаг 6: K-Means кластеризация...")
+        df, cluster_analysis = self.create_kmeans_segments(df)
+        print("   ✓ 4 кластера создано")
+
+        return df, cluster_analysis
+
+    def generate_full_report(self, df):
+        return {
+            'total_applications':   int(len(df)),
+            'status_distribution':  df['Статус заявки'].value_counts().to_dict(),
+            'total_subsidy_amount': float(df['Причитающая сумма'].sum()),
+            'average_subsidy':      float(df['Причитающая сумма'].mean()),
+            'high_risk_count':      int((df['Risk_Level'] == 'High Risk').sum()),
+            'medium_risk_count':    int((df['Risk_Level'] == 'Medium Risk').sum()),
+            'avg_merit_score':      float(df['Merit_Score'].mean()),
+            'regions_count':        int(df['Область'].nunique()),
+            'directions_count':     int(df['Направление водства'].nunique()),
+        }
 
 
+# ─────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────
 def main():
-    """Основная функция для демонстрации работы системы"""
-    
-    print("="*80)
-    print("SubsiSmart KZ - AI-скоринг для государственных субсидий")
-    print("="*80)
-    print()
-    
-    # Инициализация системы скоринга
+    import os
+    print("=" * 70)
+    print("SubsiSmart KZ v2.0 — Merit-based AI скоринг субсидий")
+    print("=" * 70)
+
     scoring = SubsidyScoring()
-    
-    # Загрузка данных
-    print("📊 Загрузка данных...")
-    df = pd.read_excel('data/Выгрузка_по_выданным_субсидиям_2025_год__обезлич_.xlsx', skiprows=4)
-    print(f"✓ Загружено записей: {len(df)}")
-    print()
-    
-    # 1. Предобработка данных
-    print("🔧 Этап 1: Предобработка данных...")
-    df_processed = scoring.preprocess_data(df)
-    print(f"✓ Данные обработаны: {len(df_processed)} записей")
-    print(f"✓ Добавлено признаков из даты: Месяц, День недели, Час, Квартал")
-    print(f"✓ Закодированы категории: Область, Направление водства, Статус заявки")
-    print()
-    
-    # 2. Кластеризация K-Means
-    print("🎯 Этап 2: Сегментация заявителей (K-Means)...")
-    df_processed, cluster_analysis = scoring.create_kmeans_segments(df_processed, n_clusters=4)
-    print("✓ Создано 4 кластера по признакам: Норматив и Причитающая сумма")
-    print("\n📈 Характеристики кластеров:")
+
+    fname = os.listdir('data')[0]
+    print(f"\n📂 Загрузка: {fname}")
+    df = pd.read_excel(f'data/{fname}', skiprows=4)
+    print(f"✓ Загружено {len(df):,} строк\n")
+
+    df, cluster_analysis = scoring.run_full_pipeline(df)
+
+    print("\n📋 Кластеры:")
     print(cluster_analysis)
-    print()
-    
-    # 3. Детектирование аномалий
-    print("🚨 Этап 3: Детектирование аномалий...")
-    df_processed = scoring.detect_anomalies(df_processed)
-    risk_counts = df_processed['Risk_Level'].value_counts()
-    print(f"✓ Анализ рисков завершен:")
-    print(f"  - Normal: {risk_counts.get('Normal', 0)}")
-    print(f"  - Medium Risk: {risk_counts.get('Medium Risk', 0)}")
-    print(f"  - High Risk: {risk_counts.get('High Risk', 0)}")
-    print()
-    
-    # 4. Региональный отчет
-    print("🗺️  Этап 4: Региональный анализ...")
-    regional_report = scoring.regional_report(df_processed)
-    print("\n📊 ТОП-10 регионов по проценту исполненных заявок:")
-    print(regional_report.head(10))
-    print()
-    
-    # 5. Расчет risk score
-    print("⚠️  Этап 5: Расчет общего risk score...")
-    df_processed = scoring.calculate_risk_score(df_processed)
-    print(f"✓ Risk score рассчитан для всех заявок")
-    print(f"\nСтатистика Risk Score:")
-    print(df_processed['Risk_Score'].describe())
-    print()
-    
-    # 6. Полный отчет
-    print("📋 Этап 6: Генерация итогового отчета...")
-    full_report = scoring.generate_full_report(df_processed)
-    print("\n" + "="*80)
-    print("ИТОГОВЫЙ ОТЧЕТ")
-    print("="*80)
-    print(f"Всего заявок: {full_report['total_applications']:,}")
-    print(f"Общая сумма субсидий: {full_report['total_subsidy_amount']:,.2f} тенге")
-    print(f"Средняя субсидия: {full_report['average_subsidy']:,.2f} тенге")
-    print(f"Заявок с высоким риском: {full_report['high_risk_applications']}")
-    print(f"Количество регионов: {full_report['regions_count']}")
-    print(f"Направлений деятельности: {full_report['directions_count']}")
-    print("\nРаспределение по статусам:")
-    for status, count in full_report['status_distribution'].items():
-        print(f"  {status}: {count:,}")
-    print("="*80)
-    
-    # Сохраняем обработанные данные
-    print("\n💾 Сохранение результатов...")
-    df_processed.to_csv('results/processed_data.csv', index=False, encoding='utf-8-sig')
-    regional_report.to_csv('results/regional_report.csv', encoding='utf-8-sig')
-    print("✓ Результаты сохранены в папку 'results/'")
-    print()
-    print("✅ Анализ завершен успешно!")
-    
+
+    print("\n🏆 ТОП-10 кандидатов для субсидии:")
+    shortlist = scoring.generate_shortlist(df, top_n=10)
+    if len(shortlist) > 0:
+        print(shortlist[['Номер заявки', 'Область', 'Направление водства',
+                          'Merit_Score', 'Explainability']].to_string())
+    else:
+        print("   Активных заявок не найдено")
+
+    print("\n🗺️ Региональный отчёт:")
+    reg = scoring.regional_report(df)
+    print(reg[['Всего_заявок', 'Процент_исполненных',
+               'Средний_Merit_Score', 'Общая_сумма']].head(10))
+
+    report = scoring.generate_full_report(df)
+    print("\n" + "=" * 70)
+    print("ИТОГОВЫЙ ОТЧЁТ")
+    print("=" * 70)
+    print(f"Всего заявок:           {report['total_applications']:,}")
+    print(f"Общая сумма субсидий:   {report['total_subsidy_amount']:,.0f} тг")
+    print(f"Средняя субсидия:       {report['average_subsidy']:,.0f} тг")
+    print(f"Средний Merit Score:    {report['avg_merit_score']:.1f}/100")
+    print(f"High Risk заявок:       {report['high_risk_count']:,} "
+          f"({report['high_risk_count']/report['total_applications']*100:.1f}%)")
+    print(f"Medium Risk заявок:     {report['medium_risk_count']:,}")
+    print(f"Регионов:               {report['regions_count']}")
+
+    os.makedirs('results', exist_ok=True)
+    df.to_csv('results/processed_data.csv', index=False, encoding='utf-8-sig')
+    scoring.regional_report(df).to_csv(
+        'results/regional_report.csv', encoding='utf-8-sig')
+    scoring.generate_shortlist(df, top_n=50).to_csv(
+        'results/shortlist.csv', index=False, encoding='utf-8-sig')
+    print("\n✅ Нәтижелер results/ папкасына сақталды")
+
 
 if __name__ == "__main__":
     main()

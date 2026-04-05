@@ -6,681 +6,633 @@
     <title>SubsiSmart KZ - AI-скоринг государственных субсидий</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --primary-green: #2ecc71;
-            --dark-green: #27ae60;
-            --light-green: #a8e6cf;
-            --bg-white: #ffffff;
-            --bg-light: #f8f9fa;
-            --text-dark: #2c3e50;
-            --text-gray: #7f8c8d;
-            --border-color: #e0e0e0;
-            --shadow: 0 2px 8px rgba(0,0,0,0.08);
-            --risk-high: #e74c3c;
-            --risk-medium: #f39c12;
-            --risk-low: #2ecc71;
+            --green:        #2ecc71;
+            --dark-green:   #27ae60;
+            --light-green:  #a8e6cf;
+            --bg:           #f8f9fa;
+            --white:        #ffffff;
+            --dark:         #2c3e50;
+            --gray:         #7f8c8d;
+            --border:       #e0e0e0;
+            --shadow:       0 2px 8px rgba(0,0,0,0.08);
+            --red:          #e74c3c;
+            --orange:       #f39c12;
+            --blue:         #3498db;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg-light);
-            color: var(--text-dark);
-            line-height: 1.6;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; }
 
-        /* Header */
+        /* HEADER */
         .header {
-            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
-            color: white;
-            padding: 2rem 0;
-            box-shadow: var(--shadow);
+            background: linear-gradient(135deg, var(--green), var(--dark-green));
+            color: white; padding: 2rem 0; box-shadow: var(--shadow);
         }
+        .header-content { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+        .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .header p  { opacity: 0.9; font-size: 1rem; }
 
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem;
+        /* NAV TABS */
+        .nav-tabs {
+            background: var(--white); border-bottom: 2px solid var(--border);
+            padding: 0 2rem; display: flex; gap: 0;
+            max-width: 1400px; margin: 0 auto;
         }
-
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .nav-tab {
+            padding: 1rem 1.5rem; cursor: pointer; font-weight: 500;
+            border-bottom: 3px solid transparent; margin-bottom: -2px;
+            transition: all 0.2s; color: var(--gray);
         }
+        .nav-tab.active { color: var(--dark-green); border-bottom-color: var(--dark-green); }
+        .nav-tab:hover  { color: var(--dark-green); }
 
-        .header p {
-            opacity: 0.9;
-            font-size: 1rem;
-        }
+        /* CONTAINER */
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
 
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
+        /* TAB CONTENT */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        /* Stats Grid */
+        /* STATS GRID */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem; margin-bottom: 2rem;
         }
-
         .stat-card {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            border-left: 4px solid var(--primary-green);
-            transition: transform 0.2s ease;
+            background: var(--white); padding: 1.5rem; border-radius: 10px;
+            box-shadow: var(--shadow); border-left: 4px solid var(--green);
+            transition: transform 0.2s;
         }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+        .stat-card.red    { border-left-color: var(--red); }
+        .stat-card.orange { border-left-color: var(--orange); }
+        .stat-card.blue   { border-left-color: var(--blue); }
+        .stat-label   { color: var(--gray); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; }
+        .stat-value   { font-size: 1.9rem; font-weight: 700; color: var(--dark); }
+        .stat-subtext { font-size: 0.82rem; color: var(--gray); margin-top: 0.4rem; }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-
-        .stat-label {
-            color: var(--text-gray);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .stat-subtext {
-            font-size: 0.85rem;
-            color: var(--text-gray);
-            margin-top: 0.5rem;
-        }
-
-        /* Charts Grid */
+        /* CHARTS GRID */
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
+            gap: 2rem; margin-bottom: 2rem;
         }
-
         .chart-card {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
+            background: var(--white); padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow);
         }
-
         .chart-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            color: var(--text-dark);
-            border-bottom: 2px solid var(--light-green);
-            padding-bottom: 0.5rem;
+            font-size: 1.1rem; font-weight: 600; margin-bottom: 1.2rem;
+            border-bottom: 2px solid var(--light-green); padding-bottom: 0.5rem;
         }
+        .chart-container { position: relative; height: 280px; }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-
-        /* Table Section */
+        /* TABLE SECTION */
         .table-section {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
+            background: var(--white); padding: 1.5rem; border-radius: 10px;
+            box-shadow: var(--shadow); margin-bottom: 2rem;
         }
-
         .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;
         }
-
-        .table-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .filters {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
+        .table-title { font-size: 1.15rem; font-weight: 600; }
+        .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
         .filter-select {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-white);
-            color: var(--text-dark);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: border-color 0.2s;
+            padding: 0.45rem 0.9rem; border: 1px solid var(--border);
+            border-radius: 6px; background: var(--white); font-size: 0.9rem; cursor: pointer;
         }
+        .filter-select:focus { outline: none; border-color: var(--green); }
 
-        .filter-select:focus {
-            outline: none;
-            border-color: var(--primary-green);
-        }
-
-        /* Table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            overflow-x: auto;
-        }
-
-        .data-table thead {
-            background: var(--light-green);
-        }
-
+        /* DATA TABLE */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .data-table thead { background: #f0faf4; }
         .data-table th {
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-dark);
-            border-bottom: 2px solid var(--primary-green);
+            padding: 0.9rem 1rem; text-align: left; font-weight: 600;
+            border-bottom: 2px solid var(--light-green); white-space: nowrap;
         }
+        .data-table td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
+        .data-table tbody tr:hover { background: #f8fffe; }
 
-        .data-table td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
+        /* BADGES */
+        .badge {
+            display: inline-block; padding: 0.2rem 0.65rem;
+            border-radius: 20px; font-size: 0.82rem; font-weight: 500;
         }
+        .badge-high    { background: rgba(231,76,60,0.1);  color: var(--red); }
+        .badge-medium  { background: rgba(243,156,18,0.1); color: var(--orange); }
+        .badge-normal  { background: rgba(46,204,113,0.1); color: var(--dark-green); }
+        .badge-exec    { background: rgba(46,204,113,0.15); color: var(--dark-green); }
+        .badge-appr    { background: rgba(52,152,219,0.15); color: #2980b9; }
+        .badge-rej     { background: rgba(231,76,60,0.15);  color: #c0392b; }
+        .badge-other   { background: rgba(127,140,141,0.15); color: var(--gray); }
 
-        .data-table tbody tr:hover {
-            background: var(--bg-light);
+        /* MERIT SCORE BAR */
+        .merit-bar-wrap { display: flex; align-items: center; gap: 0.5rem; min-width: 140px; }
+        .merit-bar-bg   { flex: 1; background: var(--border); border-radius: 4px; height: 8px; }
+        .merit-bar-fill { height: 8px; border-radius: 4px; transition: width 0.5s; }
+        .merit-label    { font-weight: 700; min-width: 36px; font-size: 0.9rem; }
+
+        /* SHORTLIST CARD */
+        .shortlist-card {
+            background: var(--white); border-radius: 10px; box-shadow: var(--shadow);
+            padding: 1.2rem 1.5rem; margin-bottom: 1rem;
+            border-left: 5px solid var(--green); transition: box-shadow 0.2s;
         }
+        .shortlist-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+        .shortlist-card.risk-high   { border-left-color: var(--red); }
+        .shortlist-card.risk-medium { border-left-color: var(--orange); }
+        .sc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+        .sc-title   { font-weight: 600; font-size: 1rem; margin-bottom: 0.2rem; }
+        .sc-sub     { color: var(--gray); font-size: 0.85rem; }
+        .sc-score   { font-size: 2rem; font-weight: 700; color: var(--dark-green); white-space: nowrap; }
+        .sc-explain { margin-top: 0.6rem; font-size: 0.88rem; color: var(--dark); background: var(--bg); padding: 0.5rem 0.8rem; border-radius: 6px; }
+        .sc-meta    { display: flex; gap: 1.5rem; margin-top: 0.6rem; font-size: 0.85rem; color: var(--gray); flex-wrap: wrap; }
+        .sc-meta span b { color: var(--dark); }
 
-        /* Risk Badges */
-        .risk-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
+        /* SHORTLIST FILTERS */
+        .shortlist-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+        .shortlist-filters label { font-weight: 500; font-size: 0.9rem; }
 
-        .risk-high {
-            background: rgba(231, 76, 60, 0.1);
-            color: var(--risk-high);
-        }
+        /* LOADING */
+        .loading { text-align: center; padding: 3rem; color: var(--gray); font-size: 1rem; }
 
-        .risk-medium {
-            background: rgba(243, 156, 18, 0.1);
-            color: var(--risk-medium);
-        }
+        /* FOOTER */
+        .footer { text-align: center; padding: 2rem; color: var(--gray); font-size: 0.88rem; }
 
-        .risk-normal {
-            background: rgba(46, 204, 113, 0.1);
-            color: var(--risk-low);
-        }
-
-        /* Status Badges */
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .status-executed {
-            background: rgba(46, 204, 113, 0.15);
-            color: var(--dark-green);
-        }
-
-        .status-approved {
-            background: rgba(52, 152, 219, 0.15);
-            color: #2980b9;
-        }
-
-        .status-rejected {
-            background: rgba(231, 76, 60, 0.15);
-            color: #c0392b;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-gray);
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-gray);
-            font-size: 0.9rem;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header h1 {
-                font-size: 1.5rem;
-            }
+            .charts-grid { grid-template-columns: 1fr; }
+            .stats-grid  { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-content">
-            <h1>🌾 SubsiSmart KZ</h1>
-            <p>AI-система скоринга для государственных субсидий Казахстана</p>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-content">
+        <h1>🌾 SubsiSmart KZ</h1>
+        <p>AI жүйесі — мемлекеттік субсидияларды merit-based скоринг | Decentrathon 5.0</p>
+    </div>
+</div>
+
+<!-- NAV TABS -->
+<div style="background:white; border-bottom:2px solid #e0e0e0;">
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="switchTab('dashboard', this)">📊 Dashbord</div>
+        <div class="nav-tab" onclick="switchTab('shortlist', this)">🏆 Shortlist</div>
+        <div class="nav-tab" onclick="switchTab('applications', this)">🔍 Заявки</div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ══════════════ TAB 1: DASHBOARD ══════════════ -->
+    <div id="tab-dashboard" class="tab-content active">
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Барлық өтінім</div>
+                <div class="stat-value" id="totalApplications">—</div>
+                <div class="stat-subtext">Жүйе өңдеді</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-label">Орташа Merit Score</div>
+                <div class="stat-value" id="avgMeritScore">—</div>
+                <div class="stat-subtext">100 баллдан</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-label">Тексеру қажет</div>
+                <div class="stat-value" id="highRisk">—</div>
+                <div class="stat-subtext">High Risk өтінімдер</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Орындалды</div>
+                <div class="stat-value" id="executedPercent">—</div>
+                <div class="stat-subtext">Сәтті өтінімдер</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Жалпы субсидия</div>
+                <div class="stat-value" id="totalAmount">—</div>
+                <div class="stat-subtext">теңге</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">Қабылданбаған</div>
+                <div class="stat-value" id="rejectedPercent">—</div>
+                <div class="stat-subtext">Отклонённых заявок</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">📊 ТОП-10 аймақ — Merit Score бойынша</div>
+                <div class="chart-container"><canvas id="regionalChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">🎯 Тәуекел деңгейлерінің үлесі</div>
+                <div class="chart-container"><canvas id="riskChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">📈 Айлар бойынша өтінімдер</div>
+                <div class="chart-container"><canvas id="monthlyChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">🌾 Субсидиялау бағыттары</div>
+                <div class="chart-container"><canvas id="directionChart"></canvas></div>
+            </div>
         </div>
     </div>
 
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Stats Grid -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-label">Всего заявок</div>
-                <div class="stat-value" id="totalApplications">-</div>
-                <div class="stat-subtext">Обработано системой</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Общая сумма</div>
-                <div class="stat-value" id="totalAmount">-</div>
-                <div class="stat-subtext">Субсидий в тенге</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Высокий риск</div>
-                <div class="stat-value" id="highRisk">-</div>
-                <div class="stat-subtext">Заявок требуют проверки</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Исполнено</div>
-                <div class="stat-value" id="executedPercent">-</div>
-                <div class="stat-subtext">Успешных заявок</div>
-            </div>
-        </div>
-
-        <!-- Charts Grid -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <div class="chart-title">📊 ТОП-10 регионов по исполнению</div>
-                <div class="chart-container">
-                    <canvas id="regionalChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">🎯 Распределение рисков</div>
-                <div class="chart-container">
-                    <canvas id="riskChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">📈 Динамика заявок по месяцам</div>
-                <div class="chart-container">
-                    <canvas id="monthlyChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">🌾 Направления субсидирования</div>
-                <div class="chart-container">
-                    <canvas id="directionChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Applications Table -->
+    <!-- ══════════════ TAB 2: SHORTLIST ══════════════ -->
+    <div id="tab-shortlist" class="tab-content">
         <div class="table-section">
             <div class="table-header">
-                <div class="table-title">🔍 Заявки с высоким риском</div>
+                <div class="table-title"> ТОП кандидаттар — Merit Score бойынша</div>
+            </div>
+            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:1.2rem;">
+                Жүйе белсенді өтінімдерді (Одобрена / Получена / Сформировано поручение) тарихи деректер негізінде бағалап, ең тиімді шаруашылықтарды шығарады.
+            </p>
+            <div class="shortlist-filters">
+                <label>Бағыт:</label>
+                <select class="filter-select" id="slDirectionFilter" onchange="loadShortlist()">
+                    <option value="">Барлық бағыттар</option>
+                </select>
+                <label>Аймақ:</label>
+                <select class="filter-select" id="slRegionFilter" onchange="loadShortlist()">
+                    <option value="">Барлық аймақтар</option>
+                </select>
+                <select class="filter-select" id="slTopN" onchange="loadShortlist()">
+                    <option value="20">ТОП-20</option>
+                    <option value="50">ТОП-50</option>
+                    <option value="100">ТОП-100</option>
+                </select>
+            </div>
+            <div id="shortlistContainer">
+                <div class="loading">Жүктелуде...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════ TAB 3: APPLICATIONS ══════════════ -->
+    <div id="tab-applications" class="tab-content">
+        <div class="table-section">
+            <div class="table-header">
+                <div class="table-title">🔍 Өтінімдерді іздеу және сүзу</div>
                 <div class="filters">
-                    <select class="filter-select" id="regionFilter">
-                        <option value="">Все регионы</option>
+                    <select class="filter-select" id="regionFilter" onchange="loadApplicationsTable()">
+                        <option value="">Барлық аймақтар</option>
                     </select>
-                    <select class="filter-select" id="riskFilter">
-                        <option value="">Все уровни риска</option>
-                        <option value="High Risk">Высокий риск</option>
-                        <option value="Medium Risk">Средний риск</option>
-                        <option value="Normal">Норма</option>
+                    <select class="filter-select" id="riskFilter" onchange="loadApplicationsTable()">
+                        <option value="">Барлық тәуекел</option>
+                        <option value="High Risk">🔴 High Risk</option>
+                        <option value="Medium Risk">🟡 Medium Risk</option>
+                        <option value="Normal">🟢 Normal</option>
                     </select>
-                    <select class="filter-select" id="statusFilter">
-                        <option value="">Все статусы</option>
+                    <select class="filter-select" id="statusFilter" onchange="loadApplicationsTable()">
+                        <option value="">Барлық статус</option>
                     </select>
                 </div>
             </div>
-            <div style="overflow-x: auto;">
+            <div style="overflow-x:auto;">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Номер заявки</th>
-                            <th>Дата</th>
-                            <th>Область</th>
-                            <th>Направление</th>
+                            <th>Өтінім №</th>
+                            <th>Күні</th>
+                            <th>Аймақ</th>
+                            <th>Бағыт</th>
                             <th>Статус</th>
                             <th>Норматив</th>
                             <th>Сумма</th>
-                            <th>Риск</th>
-                            <th>Кластер</th>
+                            <th>Мал басы</th>
+                            <th>Merit Score</th>
+                            <th>Тәуекел</th>
+                            <th>Себеп</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <tr>
-                            <td colspan="9" class="loading">Загрузка данных...</td>
-                        </tr>
+                        <tr><td colspan="11" class="loading">Жүктелуде...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <div class="footer">
-        <p>SubsiSmart KZ © 2025 | Разработано для Decentrathon 5.0</p>
-        <p style="margin-top: 0.5rem; font-size: 0.85rem;">AI for Government Track | Министерство сельского хозяйства РК</p>
-    </div>
+</div><!-- /container -->
 
-    <script>
-        // Утилиты форматирования
-        function formatNumber(num) {
-            return new Intl.NumberFormat('ru-RU').format(Math.round(num));
-        }
+<div class="footer">
+    <p>SubsiSmart KZ © 2025 | Decentrathon 5.0 | AI for Government</p>
+    <p style="margin-top:0.3rem; font-size:0.82rem;">ҚР Ауыл шаруашылығы министрлігі | Жүйе шешім қабылдауға көмектеседі, бірақ алмастырмайды</p>
+</div>
 
-        function formatCurrency(num) {
-            return new Intl.NumberFormat('ru-RU', {
-                maximumFractionDigits: 0
-            }).format(Math.round(num));
-        }
+<script>
+    // ─── UTILS ───────────────────────────────────
+    const fmt  = n => n == null ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n));
+    const fmtF = n => n == null ? '—' : new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Math.round(n));
 
-        // Загрузка статистики
-        async function loadDashboardStats() {
-            try {
-                const response = await fetch('/api/dashboard_stats');
-                const stats = await response.json();
+    function meritColor(score) {
+        if (score >= 75) return '#27ae60';
+        if (score >= 50) return '#2ecc71';
+        if (score >= 30) return '#f39c12';
+        return '#e74c3c';
+    }
 
-                document.getElementById('totalApplications').textContent = formatNumber(stats.total_applications);
-                document.getElementById('totalAmount').textContent = formatCurrency(stats.total_amount);
-                document.getElementById('highRisk').textContent = formatNumber(stats.high_risk_count);
-                document.getElementById('executedPercent').textContent = stats.executed_percent.toFixed(1) + '%';
-            } catch (error) {
-                console.error('Ошибка загрузки статистики:', error);
-            }
-        }
+    function statusBadge(s) {
+        if (!s) return '';
+        const cls = s === 'Исполнена' ? 'badge-exec' :
+                    s === 'Одобрена'  ? 'badge-appr' :
+                    s === 'Отклонена' ? 'badge-rej'  : 'badge-other';
+        return `<span class="badge ${cls}">${s}</span>`;
+    }
 
-        // График по регионам
-        async function loadRegionalChart() {
-            try {
-                const response = await fetch('/api/regional_analysis');
-                const data = await response.json();
+    function riskBadge(r) {
+        if (!r) return '';
+        const cls = r === 'High Risk'   ? 'badge-high'   :
+                    r === 'Medium Risk' ? 'badge-medium'  : 'badge-normal';
+        return `<span class="badge ${cls}">${r}</span>`;
+    }
 
-                const ctx = document.getElementById('regionalChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(d => d.region),
-                        datasets: [{
-                            label: 'Исполнено (%)',
-                            data: data.map(d => d.executed_percent),
-                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки регионального графика:', error);
-            }
-        }
+    function meritBar(score) {
+        const s = score ?? 0;
+        const color = meritColor(s);
+        return `<div class="merit-bar-wrap">
+            <div class="merit-bar-bg"><div class="merit-bar-fill" style="width:${s}%;background:${color}"></div></div>
+            <span class="merit-label" style="color:${color}">${s}</span>
+        </div>`;
+    }
 
-        // График рисков
-        async function loadRiskChart() {
-            try {
-                const response = await fetch('/api/risk_distribution');
-                const data = await response.json();
+    // ─── TAB SWITCH ──────────────────────────────
+    function switchTab(name, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        el.classList.add('active');
+        if (name === 'shortlist')    loadShortlist();
+        if (name === 'applications') loadApplicationsTable();
+    }
 
-                const ctx = document.getElementById('riskChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.map(d => d.level === 'Normal' ? 'Норма' : 
-                                          d.level === 'Medium Risk' ? 'Средний риск' : 'Высокий риск'),
-                        datasets: [{
-                            data: data.map(d => d.count),
-                            backgroundColor: [
-                                'rgba(46, 204, 113, 0.7)',
-                                'rgba(243, 156, 18, 0.7)',
-                                'rgba(231, 76, 60, 0.7)'
-                            ],
-                            borderColor: [
-                                'rgba(46, 204, 113, 1)',
-                                'rgba(243, 156, 18, 1)',
-                                'rgba(231, 76, 60, 1)'
-                            ],
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика рисков:', error);
-            }
-        }
+    // ─── DASHBOARD STATS ─────────────────────────
+    async function loadDashboardStats() {
+        try {
+            const r = await fetch('/api/dashboard_stats');
+            const s = await r.json();
+            document.getElementById('totalApplications').textContent = fmt(s.total_applications);
+            document.getElementById('avgMeritScore').textContent     = (s.avg_merit_score ?? 0).toFixed(1) + '/100';
+            document.getElementById('highRisk').textContent          = fmt(s.high_risk_count);
+            document.getElementById('executedPercent').textContent   = (s.executed_percent ?? 0).toFixed(1) + '%';
+            document.getElementById('totalAmount').textContent       = fmtF(s.total_amount);
+            document.getElementById('rejectedPercent').textContent   = (s.rejected_percent ?? 0).toFixed(1) + '%';
+        } catch(e) { console.error(e); }
+    }
 
-        // График по месяцам
-        async function loadMonthlyChart() {
-            try {
-                const response = await fetch('/api/monthly_trend');
-                const data = await response.json();
-
-                const ctx = document.getElementById('monthlyChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.map(d => d.month_name),
-                        datasets: [{
-                            label: 'Количество заявок',
-                            data: data.map(d => d.applications),
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика по месяцам:', error);
-            }
-        }
-
-        // График по направлениям
-        async function loadDirectionChart() {
-            try {
-                const response = await fetch('/api/direction_analysis');
-                const data = await response.json();
-
-                const ctx = document.getElementById('directionChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(d => d.direction.substring(0, 30) + '...'),
-                        datasets: [{
-                            label: 'Количество заявок',
-                            data: data.map(d => d.count),
-                            backgroundColor: 'rgba(39, 174, 96, 0.7)',
-                            borderColor: 'rgba(39, 174, 96, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            x: { beginAtZero: true }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика по направлениям:', error);
-            }
-        }
-
-        // Загрузка фильтров
-        async function loadFilters() {
-            try {
-                const response = await fetch('/api/filters');
-                const filters = await response.json();
-
-                const regionFilter = document.getElementById('regionFilter');
-                filters.regions.forEach(region => {
-                    const option = document.createElement('option');
-                    option.value = region;
-                    option.textContent = region;
-                    regionFilter.appendChild(option);
-                });
-
-                const statusFilter = document.getElementById('statusFilter');
-                filters.statuses.forEach(status => {
-                    const option = document.createElement('option');
-                    option.value = status;
-                    option.textContent = status;
-                    statusFilter.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки фильтров:', error);
-            }
-        }
-
-        // Загрузка таблицы
-        async function loadApplicationsTable() {
-            const region = document.getElementById('regionFilter').value;
-            const risk = document.getElementById('riskFilter').value;
-            const status = document.getElementById('statusFilter').value;
-
-            let url = '/api/search_applications?limit=50';
-            if (region) url += `&region=${encodeURIComponent(region)}`;
-            if (risk) url += `&risk_level=${encodeURIComponent(risk)}`;
-            if (status) url += `&status=${encodeURIComponent(status)}`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-
-                const tbody = document.getElementById('tableBody');
-                tbody.innerHTML = '';
-
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="loading">Данные не найдены</td></tr>';
-                    return;
+    // ─── REGIONAL CHART ──────────────────────────
+    async function loadRegionalChart() {
+        try {
+            const r    = await fetch('/api/regional_analysis');
+            const data = await r.json();
+            const ctx  = document.getElementById('regionalChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.region.replace('область', 'обл.').replace('Казахстанская', 'КЗ')),
+                    datasets: [{
+                        label: 'Орташа Merit Score',
+                        data: data.map(d => d.avg_merit_score),
+                        backgroundColor: data.map(d => `rgba(46,204,113,${0.4 + d.avg_merit_score/200})`),
+                        borderColor: 'rgba(39,174,96,0.8)', borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, max: 100,
+                        ticks: { callback: v => v + '/100' }
+                    }}
                 }
+            });
+        } catch(e) { console.error(e); }
+    }
 
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    
-                    const riskClass = row.Risk_Level === 'High Risk' ? 'risk-high' :
-                                     row.Risk_Level === 'Medium Risk' ? 'risk-medium' : 'risk-normal';
-                    
-                    const statusClass = row['Статус заявки'] === 'Исполнена' ? 'status-executed' :
-                                       row['Статус заявки'] === 'Одобрена' ? 'status-approved' : 'status-rejected';
-                    
-                    tr.innerHTML = `
-                        <td>${row['Номер заявки']}</td>
-                        <td>${row['Дата поступления'].substring(0, 10)}</td>
-                        <td>${row['Область']}</td>
-                        <td>${row['Направление водства'].substring(0, 30)}...</td>
-                        <td><span class="status-badge ${statusClass}">${row['Статус заявки']}</span></td>
-                        <td>${formatCurrency(row['Норматив'])}</td>
-                        <td>${formatCurrency(row['Причитающая сумма'])}</td>
-                        <td><span class="risk-badge ${riskClass}">${row.Risk_Level}</span></td>
-                        <td>${row['Кластер']}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки таблицы:', error);
+    // ─── RISK CHART ──────────────────────────────
+    async function loadRiskChart() {
+        try {
+            const r    = await fetch('/api/risk_distribution');
+            const data = await r.json();
+            const ctx  = document.getElementById('riskChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d =>
+                        d.level === 'Normal'      ? '🟢 Норма'         :
+                        d.level === 'Medium Risk' ? '🟡 Орташа тәуекел' : '🔴 Жоғары тәуекел'),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: ['rgba(46,204,113,0.75)','rgba(243,156,18,0.75)','rgba(231,76,60,0.75)'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // ─── MONTHLY CHART ───────────────────────────
+    async function loadMonthlyChart() {
+        try {
+            const r    = await fetch('/api/monthly_trend');
+            const data = await r.json();
+            const ctx  = document.getElementById('monthlyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.month_name),
+                    datasets: [{
+                        label: 'Өтінімдер саны',
+                        data: data.map(d => d.applications),
+                        borderColor: 'rgba(46,204,113,1)',
+                        backgroundColor: 'rgba(46,204,113,0.1)',
+                        tension: 0.4, fill: true, pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // ─── DIRECTION CHART ─────────────────────────
+    async function loadDirectionChart() {
+        try {
+            const r    = await fetch('/api/direction_analysis');
+            const data = await r.json();
+            const ctx  = document.getElementById('directionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.direction.replace('Субсидирование в ','').replace('Субсидирование ','').substring(0,28)),
+                    datasets: [{
+                        label: 'Өтінімдер',
+                        data: data.map(d => d.count),
+                        backgroundColor: 'rgba(39,174,96,0.7)',
+                        borderColor: 'rgba(39,174,96,1)', borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // ─── SHORTLIST ───────────────────────────────
+    async function loadShortlist() {
+        const dir    = document.getElementById('slDirectionFilter').value;
+        const region = document.getElementById('slRegionFilter').value;
+        const topN   = document.getElementById('slTopN').value;
+
+        let url = `/api/shortlist?top_n=${topN}`;
+        if (dir)    url += `&direction=${encodeURIComponent(dir)}`;
+        if (region) url += `&region=${encodeURIComponent(region)}`;
+
+        const container = document.getElementById('shortlistContainer');
+        container.innerHTML = '<div class="loading">Жүктелуде...</div>';
+
+        try {
+            const r    = await fetch(url);
+            const data = await r.json();
+
+            if (!data.length) {
+                container.innerHTML = '<div class="loading">Белсенді өтінімдер табылмады</div>';
+                return;
             }
+
+            container.innerHTML = data.map((row, i) => {
+                const score    = row.Merit_Score ?? 0;
+                const color    = meritColor(score);
+                const riskCls  = row.Risk_Level === 'High Risk'   ? 'risk-high'   :
+                                 row.Risk_Level === 'Medium Risk' ? 'risk-medium'  : '';
+                const explain  = row.Explainability || '';
+
+                return `<div class="shortlist-card ${riskCls}">
+                    <div class="sc-header">
+                        <div>
+                            <div class="sc-title">#${i+1} — ${row['Область'] ?? '—'}, ${row['Район хозяйства'] ?? '—'}</div>
+                            <div class="sc-sub">${row['Направление водства'] ?? '—'}</div>
+                        </div>
+                        <div class="sc-score" style="color:${color}">${score}<span style="font-size:1rem; color:var(--gray)">/100</span></div>
+                    </div>
+                    ${explain ? `<div class="sc-explain">${explain}</div>` : ''}
+                    <div class="sc-meta">
+                        <span>💰 <b>${fmtF(row['Причитающая сумма'])}</b> тг</span>
+                        <span>🐄 <b>${fmt(row['Кол_голов'])}</b> бас</span>
+                        <span>📋 <b>${fmt(row['total_apps'])}</b> өтінім тарихы</span>
+                        <span>✅ <b>${row['success_rate'] ?? 0}%</b> орындалу</span>
+                        ${row['rejected_count'] ? `<span>❌ <b>${row['rejected_count']}</b> бас тарту</span>` : ''}
+                        <span>${riskBadge(row.Risk_Level)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            container.innerHTML = '<div class="loading">Қате болды</div>';
+            console.error(e);
         }
+    }
 
-        // События фильтров
-        document.getElementById('regionFilter').addEventListener('change', loadApplicationsTable);
-        document.getElementById('riskFilter').addEventListener('change', loadApplicationsTable);
-        document.getElementById('statusFilter').addEventListener('change', loadApplicationsTable);
+    // ─── FILTERS ─────────────────────────────────
+    async function loadFilters() {
+        try {
+            const r       = await fetch('/api/filters');
+            const filters = await r.json();
 
-        // Инициализация
-        window.addEventListener('load', () => {
-            loadDashboardStats();
-            loadRegionalChart();
-            loadRiskChart();
-            loadMonthlyChart();
-            loadDirectionChart();
-            loadFilters();
-            loadApplicationsTable();
-        });
-    </script>
+            ['regionFilter', 'slRegionFilter'].forEach(id => {
+                const sel = document.getElementById(id);
+                filters.regions.forEach(reg => {
+                    const o = document.createElement('option');
+                    o.value = reg; o.textContent = reg;
+                    sel.appendChild(o);
+                });
+            });
+
+            const statusFilter = document.getElementById('statusFilter');
+            filters.statuses.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s; o.textContent = s;
+                statusFilter.appendChild(o);
+            });
+
+            const slDir = document.getElementById('slDirectionFilter');
+            filters.directions.forEach(d => {
+                const o = document.createElement('option');
+                o.value = d; o.textContent = d;
+                slDir.appendChild(o);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // ─── APPLICATIONS TABLE ──────────────────────
+    async function loadApplicationsTable() {
+        const region = document.getElementById('regionFilter').value;
+        const risk   = document.getElementById('riskFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        let url = '/api/search_applications?limit=50';
+        if (region) url += `&region=${encodeURIComponent(region)}`;
+        if (risk)   url += `&risk_level=${encodeURIComponent(risk)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '<tr><td colspan="11" class="loading">Жүктелуде...</td></tr>';
+
+        try {
+            const r    = await fetch(url);
+            const data = await r.json();
+
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="11" class="loading">Деректер табылмады</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(row => `
+                <tr>
+                    <td style="font-size:0.8rem">${row['Номер заявки'] ?? '—'}</td>
+                    <td>${(row['Дата поступления'] ?? '').substring(0,10)}</td>
+                    <td style="font-size:0.85rem">${row['Область'] ?? '—'}</td>
+                    <td style="font-size:0.82rem">${(row['Направление водства'] ?? '').substring(0,28)}…</td>
+                    <td>${statusBadge(row['Статус заявки'])}</td>
+                    <td>${fmtF(row['Норматив'])}</td>
+                    <td>${fmtF(row['Причитающая сумма'])}</td>
+                    <td>${fmt(row['Кол_голов'])}</td>
+                    <td>${meritBar(row['Merit_Score'])}</td>
+                    <td>${riskBadge(row['Risk_Level'])}</td>
+                    <td style="font-size:0.8rem; max-width:260px; white-space:normal">${row['Explainability'] ?? ''}</td>
+                </tr>`).join('');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="11" class="loading">Қате болды</td></tr>';
+            console.error(e);
+        }
+    }
+
+    // ─── INIT ─────────────────────────────────────
+    window.addEventListener('load', () => {
+        loadDashboardStats();
+        loadRegionalChart();
+        loadRiskChart();
+        loadMonthlyChart();
+        loadDirectionChart();
+        loadFilters();
+    });
+</script>
 </body>
 </html>
