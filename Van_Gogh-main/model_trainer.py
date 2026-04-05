@@ -93,7 +93,7 @@ class SubsidyModelTrainer:
         model.fit(self.X_train, self.y_train)
         
         y_pred = model.predict(self.X_test)
-        y_pred_proba = model.predict_proba(self.X_test)[:, 1]
+        y_pred_proba = model.predict_proba(self.X_test)
         
         metrics = self._evaluate_model(y_pred, y_pred_proba)
         
@@ -127,7 +127,7 @@ class SubsidyModelTrainer:
         self.logger.info(f"  ✓ Лучшие параметры: {grid_search.best_params_}")
         
         y_pred = model.predict(self.X_test)
-        y_pred_proba = model.predict_proba(self.X_test)[:, 1]
+        y_pred_proba = model.predict_proba(self.X_test)
         
         metrics = self._evaluate_model(y_pred, y_pred_proba)
         
@@ -156,7 +156,7 @@ class SubsidyModelTrainer:
         self.logger.info(f"  ✓ Обучено успешно")
         
         y_pred = xgb.predict(self.X_test)
-        y_pred_proba = xgb.predict_proba(self.X_test)[:, 1]
+        y_pred_proba = xgb.predict_proba(self.X_test)
         
         metrics = self._evaluate_model(y_pred, y_pred_proba)
         
@@ -181,7 +181,7 @@ class SubsidyModelTrainer:
         gb.fit(self.X_train, self.y_train)
         
         y_pred = gb.predict(self.X_test)
-        y_pred_proba = gb.predict_proba(self.X_test)[:, 1]
+        y_pred_proba = gb.predict_proba(self.X_test)
         
         metrics = self._evaluate_model(y_pred, y_pred_proba)
         
@@ -194,16 +194,36 @@ class SubsidyModelTrainer:
     
     def _evaluate_model(self, y_pred, y_pred_proba) -> Dict:
         """
-        Вычисляет все метрики качества модели
+        Вычисляет метрики качества для бинарной и мультиклассовой задач.
         """
+        class_count = int(np.unique(self.y_test).size)
+        average = 'binary' if class_count == 2 else 'weighted'
+
         metrics = {
             'accuracy': float(accuracy_score(self.y_test, y_pred)),
-            'precision': float(precision_score(self.y_test, y_pred, zero_division=0)),
-            'recall': float(recall_score(self.y_test, y_pred, zero_division=0)),
-            'f1': float(f1_score(self.y_test, y_pred, zero_division=0)),
-            'auc_roc': float(roc_auc_score(self.y_test, y_pred_proba)),
+            'precision': float(precision_score(self.y_test, y_pred, average=average, zero_division=0)),
+            'recall': float(recall_score(self.y_test, y_pred, average=average, zero_division=0)),
+            'f1': float(f1_score(self.y_test, y_pred, average=average, zero_division=0)),
         }
-        
+
+        try:
+            proba_array = np.asarray(y_pred_proba)
+            if class_count == 2:
+                if proba_array.ndim == 2:
+                    proba_for_auc = proba_array[:, 1]
+                else:
+                    proba_for_auc = proba_array
+                metrics['auc_roc'] = float(roc_auc_score(self.y_test, proba_for_auc))
+            else:
+                if proba_array.ndim == 2 and proba_array.shape[1] >= class_count:
+                    metrics['auc_roc'] = float(
+                        roc_auc_score(self.y_test, proba_array, multi_class='ovr', average='weighted')
+                    )
+                else:
+                    metrics['auc_roc'] = 0.0
+        except Exception:
+            metrics['auc_roc'] = 0.0
+
         return metrics
     
     def cross_validate_best_model(self, cv: int = 5) -> Dict:
@@ -215,12 +235,14 @@ class SubsidyModelTrainer:
         if not self.best_model:
             raise ValueError("Сначала обучите модели")
         
+        cv_scoring = 'f1' if int(np.unique(self.y_train).size) == 2 else 'f1_weighted'
+
         scores = cross_val_score(
             self.best_model, 
             self.X_train, 
             self.y_train, 
             cv=StratifiedKFold(n_splits=cv),
-            scoring='f1'
+            scoring=cv_scoring
         )
         
         cv_results = {

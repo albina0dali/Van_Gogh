@@ -1,686 +1,827 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="kk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubsiSmart KZ - AI-скоринг государственных субсидий</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=Noto+Sans:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          primary: "#154212",
+          "primary-container": "#2d5a27",
+          surface: "#f7faf5",
+          "surface-container": "#ecefea",
+          "surface-container-low": "#eef2ec",
+          "surface-container-lowest": "#ffffff",
+          "surface-container-highest": "#e0e3de",
+          secondary: "#54634a",
+          tertiary: "#393a29",
+          error: "#ba1a1a"
+        },
+        fontFamily: {
+          headline: ["Noto Sans", "PT Sans", "sans-serif"],
+          body: ["PT Sans", "Noto Sans", "sans-serif"]
         }
-
-        :root {
-            --primary-green: #2ecc71;
-            --dark-green: #27ae60;
-            --light-green: #a8e6cf;
-            --bg-white: #ffffff;
-            --bg-light: #f8f9fa;
-            --text-dark: #2c3e50;
-            --text-gray: #7f8c8d;
-            --border-color: #e0e0e0;
-            --shadow: 0 2px 8px rgba(0,0,0,0.08);
-            --risk-high: #e74c3c;
-            --risk-medium: #f39c12;
-            --risk-low: #2ecc71;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg-light);
-            color: var(--text-dark);
-            line-height: 1.6;
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
-            color: white;
-            padding: 2rem 0;
-            box-shadow: var(--shadow);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 1rem;
-        }
-
-        /* Container */
-        .container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            border-left: 4px solid var(--primary-green);
-            transition: transform 0.2s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-
-        .stat-label {
-            color: var(--text-gray);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .stat-subtext {
-            font-size: 0.85rem;
-            color: var(--text-gray);
-            margin-top: 0.5rem;
-        }
-
-        /* Charts Grid */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .chart-card {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-        }
-
-        .chart-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            color: var(--text-dark);
-            border-bottom: 2px solid var(--light-green);
-            padding-bottom: 0.5rem;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-
-        /* Table Section */
-        .table-section {
-            background: var(--bg-white);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
-        }
-
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .table-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .filters {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-white);
-            color: var(--text-dark);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        .filter-select:focus {
-            outline: none;
-            border-color: var(--primary-green);
-        }
-
-        /* Table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            overflow-x: auto;
-        }
-
-        .data-table thead {
-            background: var(--light-green);
-        }
-
-        .data-table th {
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-dark);
-            border-bottom: 2px solid var(--primary-green);
-        }
-
-        .data-table td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .data-table tbody tr:hover {
-            background: var(--bg-light);
-        }
-
-        /* Risk Badges */
-        .risk-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .risk-high {
-            background: rgba(231, 76, 60, 0.1);
-            color: var(--risk-high);
-        }
-
-        .risk-medium {
-            background: rgba(243, 156, 18, 0.1);
-            color: var(--risk-medium);
-        }
-
-        .risk-normal {
-            background: rgba(46, 204, 113, 0.1);
-            color: var(--risk-low);
-        }
-
-        /* Status Badges */
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .status-executed {
-            background: rgba(46, 204, 113, 0.15);
-            color: var(--dark-green);
-        }
-
-        .status-approved {
-            background: rgba(52, 152, 219, 0.15);
-            color: #2980b9;
-        }
-
-        .status-rejected {
-            background: rgba(231, 76, 60, 0.15);
-            color: #c0392b;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-gray);
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-gray);
-            font-size: 0.9rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header h1 {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
+      }
+    }
+  };
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 420, 'GRAD' 0, 'opsz' 24; }
+  body {
+    font-family: 'PT Sans', 'Noto Sans', sans-serif;
+    background: #f3f7f3;
+    font-size: 13px;
+    line-height: 1.32;
+  }
+  input, select, textarea, button { font-size: 12px !important; }
+  .headline-font { font-family: 'Noto Sans', 'PT Sans', sans-serif; }
+  .page-card {
+    background: #ffffff;
+    border: 1px solid #d6e2d6;
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .pill-success { background: #ecfdf3; color: #166534; }
+  .pill-warn { background: #fffbeb; color: #9a3412; }
+  .pill-danger { background: #fff1f2; color: #9f1239; }
+  .kpi-card {
+    background: #ffffff;
+    border: 1px solid #dbe8dc;
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .chart-wrap { height: 280px; }
+  .chart-wrap-sm { height: 180px; }
+  .helper-text { font-size: 11px; color: #6b7280; margin-top: 4px; }
+  .muted-note { font-size: 11px; color: #6b7280; }
+</style>
 </head>
-<body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-content">
-            <h1>🌾 SubsiSmart KZ</h1>
-            <p>AI-система скоринга для государственных субсидий Казахстана</p>
-        </div>
+<body class="text-zinc-900 antialiased">
+<aside class="h-screen w-72 fixed left-0 top-0 bg-stone-100 flex flex-col p-6 space-y-8 z-50 border-r border-stone-200/70">
+  <div>
+    <div class="flex items-center space-x-3 mb-3">
+      <div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center shadow-sm">
+        <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+      </div>
+      <div>
+        <h1 class="text-[20px] leading-[1.05] font-bold tracking-tight text-primary headline-font">Subsi GOV</h1>
+        <p class="text-[11px] uppercase tracking-wider text-stone-500 font-bold">Мемлекеттік субсидиялар</p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="flex-grow space-y-2">
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'dashboard' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('dashboard') }}"><span class="material-symbols-outlined">dashboard</span><span>Дашборд</span></a>
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'new_application' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('new_application_page') }}"><span class="material-symbols-outlined">add_circle</span><span>Жаңа өтінім</span></a>
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'history' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('history_page') }}"><span class="material-symbols-outlined">history</span><span>Тарих</span></a>
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'analytics' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('analytics_page') }}"><span class="material-symbols-outlined">analytics</span><span>Аналитика</span></a>
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'assistant' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('assistant_page') }}"><span class="material-symbols-outlined">smart_toy</span><span>AI Көмекші</span></a>
+  </nav>
+
+  <div class="pt-4 border-t border-stone-200/70 space-y-2">
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold {{ 'bg-primary-container text-white' if active_page == 'settings' else 'text-stone-700 hover:bg-stone-200/60' }}" href="{{ url_for('settings_page') }}"><span class="material-symbols-outlined">settings</span><span>Баптаулар</span></a>
+    <a class="flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-stone-700 hover:bg-stone-200/60" href="{{ url_for('logout_page') }}"><span class="material-symbols-outlined">logout</span><span>Шығу</span></a>
+  </div>
+</aside>
+
+<main class="ml-72 min-h-screen">
+  <header class="h-16 sticky top-0 z-40 bg-transparent flex items-center justify-end px-10">
+    <div class="flex items-center gap-4">
+      <input class="bg-white rounded-full px-5 py-2 w-80 border border-stone-200" placeholder="Іздеу..." type="text"/>
+      <span class="material-symbols-outlined text-stone-600">notifications</span>
+      <span class="material-symbols-outlined text-stone-600">help_outline</span>
+      <a href="{{ url_for('assistant_page') }}" class="text-sm font-bold text-primary hover:underline">AI Көмекші</a>
+    </div>
+  </header>
+
+  <div class="px-10 pb-12 space-y-8">
+    {% if active_page == 'dashboard' %}
+    <section class="space-y-2">
+      <h2 class="text-lg md:text-xl font-extrabold headline-font text-primary">Басқару панелі</h2>
+      <p class="text-stone-500 text-sm md:text-base">Мемлекеттік субсидияларды мониторингтеу және талдау</p>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Барлық өтінім</p><h3 id="m-total" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Орындау үлесі</p><h3 id="m-executed" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0%</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Орташа балл</p><h3 id="m-score" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0/100</h3></div>
+      <div class="kpi-card bg-primary-container text-white"><p class="text-xs uppercase text-white/80 font-bold">Жалпы сома</p><h3 id="m-amount" class="text-lg md:text-xl font-extrabold headline-font mt-2">0 ₸</h3></div>
     </div>
 
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Stats Grid -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-label">Всего заявок</div>
-                <div class="stat-value" id="totalApplications">-</div>
-                <div class="stat-subtext">Обработано системой</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Общая сумма</div>
-                <div class="stat-value" id="totalAmount">-</div>
-                <div class="stat-subtext">Субсидий в тенге</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Высокий риск</div>
-                <div class="stat-value" id="highRisk">-</div>
-                <div class="stat-subtext">Заявок требуют проверки</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Исполнено</div>
-                <div class="stat-value" id="executedPercent">-</div>
-                <div class="stat-subtext">Успешных заявок</div>
-            </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="page-card">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-sm md:text-base font-bold headline-font text-primary">Өңірлік үлестірім</h4>
+          <span class="material-symbols-outlined text-stone-400">filter_list</span>
         </div>
-
-        <!-- Charts Grid -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <div class="chart-title">📊 ТОП-10 регионов по исполнению</div>
-                <div class="chart-container">
-                    <canvas id="regionalChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">🎯 Распределение рисков</div>
-                <div class="chart-container">
-                    <canvas id="riskChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">📈 Динамика заявок по месяцам</div>
-                <div class="chart-container">
-                    <canvas id="monthlyChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">🌾 Направления субсидирования</div>
-                <div class="chart-container">
-                    <canvas id="directionChart"></canvas>
-                </div>
-            </div>
+        <div id="region-list" class="space-y-3"></div>
+        <button class="w-full mt-5 py-3 rounded-xl bg-surface-container text-primary font-bold">Толық есепті көру</button>
+      </div>
+      <div class="lg:col-span-2 relative h-[560px] rounded-3xl overflow-hidden shadow-sm">
+        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfiiVEy2AXgujHyW9-7H-Cn5OG8B-VBWyvXMK-s-gknsZnEHPLklurty5VleRPeRJ1VxYHt2rvXwKHGhJvbCXCxHkJHGm-mpE0dbarzPn8xvD4CfivP9p3Iddoc6eptKFoKqYlPbrXhn3CM5KDk37aXp4dgoOMPIvhpYqYrgfjVFu42cFwV9micwfLHpRT706HtK16XnV6EdpMSu__SnmypPTepiDqa64y0CMgqA0y1gG__pgTjxPQq7i6axZC18cPy6s4Nzq2UGo" alt="monitoring"/>
+        <a href="{{ url_for('assistant_page') }}" class="absolute top-8 right-8 bg-primary-container text-white rounded-full px-7 py-4 font-bold shadow-xl flex items-center gap-2"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">smart_toy</span>AI Көмекші дайын</a>
+        <div class="absolute bottom-8 left-8 right-8 bg-[#dce4b9ee] backdrop-blur-lg p-6 rounded-3xl border border-white/40 flex items-center justify-between gap-8">
+          <div>
+            <div class="text-xl md:text-2xl font-extrabold headline-font text-primary">Дала мониторингі</div>
+            <div class="text-stone-700 mt-1 text-xs md:text-sm">Нақты уақыттағы өңірлер белсенділігі</div>
+          </div>
+          <div class="flex gap-8">
+            <div><div class="text-stone-500 font-bold text-xs">Жобалар</div><div id="hero-projects" class="text-xl md:text-2xl font-extrabold text-primary">0</div></div>
+            <div><div class="text-stone-500 font-bold text-xs">Техника</div><div id="hero-tech" class="text-xl md:text-2xl font-extrabold text-primary">0</div></div>
+          </div>
         </div>
-
-        <!-- Applications Table -->
-        <div class="table-section">
-            <div class="table-header">
-                <div class="table-title">🔍 Заявки с высоким риском</div>
-                <div class="filters">
-                    <select class="filter-select" id="regionFilter">
-                        <option value="">Все регионы</option>
-                    </select>
-                    <select class="filter-select" id="riskFilter">
-                        <option value="">Все уровни риска</option>
-                        <option value="High Risk">Высокий риск</option>
-                        <option value="Medium Risk">Средний риск</option>
-                        <option value="Normal">Норма</option>
-                    </select>
-                    <select class="filter-select" id="statusFilter">
-                        <option value="">Все статусы</option>
-                    </select>
-                </div>
-            </div>
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Номер заявки</th>
-                            <th>Дата</th>
-                            <th>Область</th>
-                            <th>Направление</th>
-                            <th>Статус</th>
-                            <th>Норматив</th>
-                            <th>Сумма</th>
-                            <th>Риск</th>
-                            <th>Кластер</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr>
-                            <td colspan="9" class="loading">Загрузка данных...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <!-- Footer -->
-    <div class="footer">
-        <p>SubsiSmart KZ © 2025 | Разработано для Decentrathon 5.0</p>
-        <p style="margin-top: 0.5rem; font-size: 0.85rem;">AI for Government Track | Министерство сельского хозяйства РК</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="page-card">
+        <h4 class="text-sm md:text-base font-bold headline-font text-primary mb-3">Өтінімдер мәртебесі</h4>
+        <div class="chart-wrap"><canvas id="dashDecisionChart"></canvas></div>
+      </div>
+      <div class="page-card">
+        <h4 class="text-sm md:text-base font-bold headline-font text-primary mb-3">Өтінімдер динамикасы</h4>
+        <div class="chart-wrap"><canvas id="dashMonthlyChart"></canvas></div>
+      </div>
     </div>
 
-    <script>
-        // Утилиты форматирования
-        function formatNumber(num) {
-            return new Intl.NumberFormat('ru-RU').format(Math.round(num));
+    {% elif active_page == 'new_application' %}
+    <section class="space-y-2">
+      <h2 class="text-lg md:text-xl font-extrabold headline-font text-primary">Жаңа өтінім</h2>
+      <p class="text-stone-500 text-sm md:text-base">Параметрлерді енгізіп, скоринг нәтижесін алыңыз</p>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="page-card space-y-4">
+        <div>
+          <label class="text-sm font-bold text-stone-700">Шаруашылық атауы</label>
+          <input id="farm-name" class="w-full rounded-xl border-stone-200 mt-1" placeholder="Мысалы: Агро-Фермер" value="Агро-Фермер"/>
+        </div>
+        <div>
+          <label class="text-sm font-bold text-stone-700">Өңір</label>
+          <select id="region-select" class="w-full rounded-xl border-stone-200 mt-1"></select>
+          <div class="helper-text">Өтінім қай өңірге тиесілі екенін таңдаңыз</div>
+        </div>
+        <div>
+          <label class="text-sm font-bold text-stone-700">Субсидия түрі</label>
+          <select id="subsidy-select" class="w-full rounded-xl border-stone-200 mt-1"></select>
+          <div class="helper-text">Скорингте қолданылатын 6 негізгі бағыт</div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-bold text-stone-700">Жер көлемі, га</label>
+            <input id="farm-size" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="1" value="120"/>
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Жылдық табыс, ₸</label>
+            <input id="annual-revenue" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="0" value="12000000"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-bold text-stone-700">Қызметкерлер саны</label>
+            <input id="employees" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="1" value="8"/>
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Ағымдағы қарыз, ₸</label>
+            <input id="debt-amount" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="0" value="3000000"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-bold text-stone-700">Сұралған субсидия сомасы, ₸</label>
+            <input id="requested-amount" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="0" value="3000000"/>
+            <div class="helper-text">Бұл мемлекеттен сұрап отырған нақты сома</div>
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Бұрынғы субсидия саны</label>
+            <input id="previous-subsidies" class="w-full rounded-xl border-stone-200 mt-1" type="number" min="0" value="0"/>
+          </div>
+        </div>
+
+        <button id="score-btn" class="w-full py-3 bg-primary-container text-white rounded-xl font-bold">Скорингті іске қосу</button>
+        <p id="score-error" class="text-sm text-red-700 hidden"></p>
+      </div>
+
+      <div class="page-card">
+        <h3 class="text-base md:text-lg font-bold headline-font text-primary mb-4">Нәтиже</h3>
+        <div id="score-result" class="min-h-[420px] rounded-2xl bg-surface-container p-5 text-stone-600">Нәтиже осы жерде көрсетіледі</div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base md:text-lg font-bold headline-font text-primary">AI көмекші</h3>
+          <p class="text-stone-500 text-sm">Жаңа өтінім бойынша түсіндіру, тәуекел және құжаттар жөнінде сұраңыз</p>
+        </div>
+        <a href="{{ url_for('assistant_page') }}" class="text-sm font-bold text-primary hover:underline">Толық чатқа өту</a>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Скоринг қалай есептеледі?</button>
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Жоғары тәуекел дегеніміз не?</button>
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Балды қалай өсіремін?</button>
+      </div>
+      <div id="embedded-chat-box" class="rounded-xl bg-surface-container p-4 h-56 overflow-y-auto space-y-3 mb-4">
+        <div class="bg-white rounded-xl p-3 text-sm text-stone-700 border border-stone-200">Сәлем! Қысқа сұрақ қойыңыз немесе толық чатқа өтіңіз.</div>
+      </div>
+      <div class="flex gap-3">
+        <textarea id="embedded-chat-input" class="w-full rounded-xl border-stone-200" rows="3" placeholder="Сұрағыңызды жазыңыз..."></textarea>
+        <button id="embedded-chat-send" class="px-6 py-3 bg-primary-container text-white rounded-xl font-bold">Жіберу</button>
+      </div>
+    </div>
+
+    {% elif active_page == 'history' %}
+    <section class="space-y-2">
+      <h2 class="text-lg md:text-xl font-extrabold headline-font text-primary">Өтінімдер тарихы</h2>
+      <p class="text-stone-500 text-sm md:text-base">Ағымдағы сессиядағы барлық өтінімдер</p>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Барлығы</p><h3 id="h-total" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Ұсынылды</p><h3 id="h-approved" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Жоғары тәуекел</p><h3 id="h-risk" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Орташа балл</p><h3 id="h-avg" class="text-lg md:text-xl font-extrabold text-primary headline-font mt-2">0/100</h3></div>
+    </div>
+
+    <div class="page-card space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <input id="history-search" class="rounded-xl border-stone-200" placeholder="Атауы/өңір бойынша іздеу"/>
+        <select id="history-region" class="rounded-xl border-stone-200"><option value="">Барлық өңір</option></select>
+        <select id="history-decision" class="rounded-xl border-stone-200"><option value="">Барлық шешім</option><option value="Одобрена">Ұсынылады</option><option value="На рассмотрении">Тексеріс</option><option value="Отклонена">Тәуекел</option></select>
+        <button id="history-clear" class="rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold">Тазалау</button>
+      </div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead><tr class="text-left border-b border-stone-200"><th class="py-2 pr-4">Кезі</th><th class="py-2 pr-4">Өңір</th><th class="py-2 pr-4">Категория</th><th class="py-2 pr-4">Субсидия</th><th class="py-2 pr-4">Балл</th><th class="py-2">Шешім</th></tr></thead>
+          <tbody id="history-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    {% elif active_page == 'analytics' %}
+    <section class="space-y-2">
+      <h2 class="text-lg md:text-xl font-extrabold headline-font text-primary">Аналитика</h2>
+      <p class="text-stone-500 text-sm md:text-base">Нақты файл деректері негізіндегі графиктер</p>
+    </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Өтінім саны</p><h3 id="a-total" class="text-lg md:text-xl font-extrabold text-primary mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Орындау саны</p><h3 id="a-executed" class="text-lg md:text-xl font-extrabold text-primary mt-2">0</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Мақұлдау үлесі</p><h3 id="a-approval" class="text-lg md:text-xl font-extrabold text-primary mt-2">0%</h3></div>
+      <div class="kpi-card"><p class="text-xs uppercase text-stone-500 font-bold">Орташа балл</p><h3 id="a-avg" class="text-lg md:text-xl font-extrabold text-primary mt-2">0</h3></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="page-card"><h4 class="text-lg md:text-xl font-bold headline-font text-primary mb-3">Өңірлік орындау (bar)</h4><div class="chart-wrap"><canvas id="analyticsRegionChart"></canvas></div></div>
+      <div class="page-card"><h4 class="text-lg md:text-xl font-bold headline-font text-primary mb-3">Айлық тренд (line)</h4><div class="chart-wrap"><canvas id="analyticsMonthlyChart"></canvas></div></div>
+    </div>
+    <div class="page-card"><h4 class="text-lg md:text-xl font-bold headline-font text-primary mb-3">Тәуекел үлестірімі (donut)</h4><div class="chart-wrap"><canvas id="analyticsRiskChart"></canvas></div></div>
+
+    {% elif active_page == 'assistant' %}
+    <section class="space-y-2">
+      <h2 class="text-lg md:text-xl font-extrabold headline-font text-primary">AI Кеңесші</h2>
+      <p class="text-stone-500 text-sm md:text-base">Субсидия және скоринг бойынша сұрақтарға жауап береді</p>
+    </section>
+
+    <div class="page-card space-y-4">
+      <div class="text-sm font-bold text-stone-700">Жылдам сұрақтар</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Скоринг қалай есептеледі?</button>
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Жоғары тәуекел дегеніміз не?</button>
+        <button class="quick-q px-4 py-3 bg-primary-container hover:bg-primary text-white rounded-xl font-bold">Балды қалай өсіремін?</button>
+      </div>
+
+      <div id="chat-box" class="rounded-xl bg-surface-container p-4 h-80 overflow-y-auto space-y-3">
+        <div class="bg-white rounded-xl p-3 text-sm text-stone-700 border border-stone-200">Сәлем! Сұрағыңызды жазыңыз.</div>
+      </div>
+      <div class="flex gap-3">
+        <textarea id="chat-input" class="w-full rounded-xl border-stone-200" rows="3" placeholder="Сұрағыңызды енгізіңіз..."></textarea>
+        <button id="chat-send" class="px-6 py-3 bg-primary-container text-white rounded-xl font-bold">Жіберу</button>
+      </div>
+    </div>
+
+    {% elif active_page == 'settings' %}
+    <section class="space-y-2"><h2 class="text-2xl md:text-3xl font-extrabold headline-font text-primary">Баптаулар</h2><p class="text-stone-500">Жүйе параметрлері</p></section>
+    <div class="page-card space-y-4">
+      <label class="flex items-center justify-between p-3 rounded-lg bg-surface-container"><span>Push хабарламалар</span><input type="checkbox" checked></label>
+      <label class="flex items-center justify-between p-3 rounded-lg bg-surface-container"><span>Email хабарламалар</span><input type="checkbox" checked></label>
+      <label class="flex items-center justify-between p-3 rounded-lg bg-surface-container"><span>Лог сақтау</span><input type="checkbox"></label>
+    </div>
+    {% endif %}
+  </div>
+</main>
+
+<a href="{{ url_for('new_application_page') }}" title="Жаңа өтінім" class="fixed bottom-10 right-10 w-16 h-16 bg-primary-container text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-50">
+  <span class="material-symbols-outlined text-3xl">add</span>
+</a>
+
+<script>
+  const ACTIVE_PAGE = "{{ active_page }}";
+  const STORAGE_KEY = "subsi_applications";
+  const CHAT_KEY = "subsi_chat_history";
+  const SCORING_CONTEXT_KEY = "subsi_scoring_context";
+  const ALL_REGIONS = ["Акмолинская область","Актюбинская область","Алматинская область","Атырауская область","Восточно-Казахстанская область","Жамбылская область","Западно-Казахстанская область","Карагандинская область","Костанайская область","Кызылординская область","Мангистауская область","Павлодарская область","Северо-Казахстанская область","Туркестанская область","Абайская область","Жетысуская область","Улытауская область","город Астана","город Алматы","город Шымкент"];
+  const SUBSIDY_TYPES = ["Субсидирование в птицеводстве","Субсидирование в овцеводстве","Субсидирование в коневодстве","Субсидирование в свиноводстве","Субсидирование в скотоводстве","Субсидирование затрат по искусственному осеменению"];
+
+  let analyticsPayload = null;
+  let charts = {};
+
+  function getHistory(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");}catch{return [];} }
+  function saveHistory(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+  function getScoringContext(){ try{return JSON.parse(localStorage.getItem(SCORING_CONTEXT_KEY)||'null');}catch{return null;} }
+  function saveScoringContext(value){ localStorage.setItem(SCORING_CONTEXT_KEY, JSON.stringify(value || null)); }
+  function formatMoney(v){ return new Intl.NumberFormat("ru-RU").format(Number(v||0)) + " ₸"; }
+  function decisionPill(dec){ if(dec==="Одобрена") return "pill-success"; if(dec==="На рассмотрении") return "pill-warn"; return "pill-danger"; }
+  function kzDecision(dec){ if(dec==="Одобрена") return "Ұсынылады"; if(dec==="На рассмотрении") return "Тексеріс"; return "Жоғары тәуекел"; }
+
+  async function loadRefs(){
+    const regionSel = document.getElementById("region-select");
+    const subsidySel = document.getElementById("subsidy-select");
+    if(!regionSel || !subsidySel) return;
+    try{
+      const [rResp,sResp] = await Promise.all([fetch('/api/references/regions'), fetch('/api/references/subsidy_types')]);
+      const rJson = await rResp.json();
+      const sJson = await sResp.json();
+      const apiRegions = (rJson.regions||[]).map(r=>r.name||r).filter(Boolean);
+      const apiSubs = (sJson.subsidy_types||[]).map(s=>s.name||s).filter(Boolean);
+      const regions = [...new Set([...ALL_REGIONS, ...apiRegions])].slice(0,20);
+      const subs = (SUBSIDY_TYPES.length ? SUBSIDY_TYPES : apiSubs).slice(0,6);
+      regionSel.innerHTML = regions.map(x=>`<option value="${x}">${x}</option>`).join('');
+      subsidySel.innerHTML = subs.map(x=>`<option value="${x}">${x}</option>`).join('');
+    }catch{
+      regionSel.innerHTML = ALL_REGIONS.map(x=>`<option value="${x}">${x}</option>`).join('');
+      subsidySel.innerHTML = SUBSIDY_TYPES.map(x=>`<option value="${x}">${x}</option>`).join('');
+    }
+  }
+
+  async function loadAnalyticsReal(){
+    try{
+      const resp = await fetch('/api/analytics/real');
+      analyticsPayload = await resp.json();
+    }catch{
+      analyticsPayload = null;
+    }
+  }
+
+  function deriveFactors(score, farmSize, revenue, debt, employees, previous, amount){
+    const pros = [];
+    const cons = [];
+    const debtRatio = debt / Math.max(revenue, 1);
+    const subsidyRatio = amount / Math.max(revenue, 1);
+
+    if(farmSize >= 150) pros.push('Ірі жер көлемі');
+    else if(farmSize >= 80) pros.push('Жеткілікті жер');
+    else cons.push('Шағын жер көлемі');
+
+    if(revenue >= 20_000_000) pros.push('Жоғары табыс');
+    else if(revenue >= 8_000_000) pros.push('Орташа табыс');
+    else cons.push('Табыс деңгейі төмен');
+
+    if(debtRatio <= 0.35) pros.push('Қарыз деңгейі қолайлы');
+    else if(debtRatio > 0.6) cons.push('Қарыз жүктемесі жоғары');
+    else cons.push('Қарыз/табыс теңгерімі әлсіз');
+
+    if(employees >= 10) pros.push('Жеткілікті жұмыс күші');
+    else if(employees < 5) cons.push('Жұмыс күші аз');
+
+    if(subsidyRatio <= 0.45) pros.push('Сұралған сома орынды');
+    else if(subsidyRatio > 0.7) cons.push('Субсидия сомасы жоғары');
+    else cons.push('Соманы қайта қарауға болады');
+
+    if(previous === 0) pros.push('Бұрынғы субсидия жоқ');
+    else if(previous > 2) cons.push('Бұрынғы субсидиялар көп');
+
+    if(score >= 70) cons.push('Критикалық тәуекел жоқ');
+    else if(score >= 40) cons.push('Қосымша тексеріс қажет');
+    else cons.push('Жоғары тәуекел');
+
+    return { pros: [...new Set(pros)].slice(0, 3), cons: [...new Set(cons)].slice(0, 3) };
+  }
+
+  function buildRiskProfile(farmSize, revenue, debt, employees){
+    return [
+      { label: 'Климаттық тәуекел', value: Math.max(5, Math.min(100, Math.round(25 + 200 / Math.max(farmSize, 5)))) },
+      { label: 'Қаржылық тәуекел', value: Math.max(5, Math.min(100, Math.round(20 + (debt / Math.max(revenue, 1)) * 70))) },
+      { label: 'Операциялық тәуекел', value: Math.max(5, Math.min(100, Math.round(65 - Math.min(employees, 30) * 1.5))) },
+    ];
+  }
+
+  function renderScoringRiskChart(series){
+    const canvas = document.getElementById('scoringRiskChart');
+    if(!canvas) return;
+    if(charts.scoringRisk) charts.scoringRisk.destroy();
+    charts.scoringRisk = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: series.map(item => item.label),
+        datasets: [{
+          data: series.map(item => item.value),
+          borderColor: '#2d5a27',
+          backgroundColor: 'rgba(45,90,39,0.14)',
+          pointBackgroundColor: '#154212',
+          pointBorderColor: '#154212',
+          pointRadius: 4,
+          tension: 0.35,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%` } }
         }
+      }
+    });
+  }
 
-        function formatCurrency(num) {
-            return new Intl.NumberFormat('ru-RU', {
-                maximumFractionDigits: 0
-            }).format(Math.round(num));
-        }
+  function renderDashboardFromReal(){
+    const summary = analyticsPayload?.summary || {};
+    const regional = analyticsPayload?.regional || [];
+    const monthly = analyticsPayload?.monthly || [];
+    const risk = analyticsPayload?.risk || [];
 
-        // Загрузка статистики
-        async function loadDashboardStats() {
-            try {
-                const response = await fetch('/api/dashboard_stats');
-                const stats = await response.json();
+    const total = Number(summary.total_applications || 0);
+    const executed = Number(summary.executed_count || 0);
+    const avg = Number(summary.average_score || 0);
+    const amount = Number(summary.total_amount || 0);
 
-                document.getElementById('totalApplications').textContent = formatNumber(stats.total_applications);
-                document.getElementById('totalAmount').textContent = formatCurrency(stats.total_amount);
-                document.getElementById('highRisk').textContent = formatNumber(stats.high_risk_count);
-                document.getElementById('executedPercent').textContent = stats.executed_percent.toFixed(1) + '%';
-            } catch (error) {
-                console.error('Ошибка загрузки статистики:', error);
-            }
-        }
+    const mTotal = document.getElementById('m-total');
+    const mExec = document.getElementById('m-executed');
+    const mScore = document.getElementById('m-score');
+    const mAmount = document.getElementById('m-amount');
+    if(mTotal){ mTotal.textContent = total.toLocaleString('ru-RU'); }
+    if(mExec){ mExec.textContent = (total? Math.round((executed/total)*100):0) + '%'; }
+    if(mScore){ mScore.textContent = (avg ? avg.toFixed(1) : '0') + '/100'; }
+    if(mAmount){ mAmount.textContent = formatMoney(amount); }
 
-        // График по регионам
-        async function loadRegionalChart() {
-            try {
-                const response = await fetch('/api/regional_analysis');
-                const data = await response.json();
+    const heroProjects = document.getElementById('hero-projects');
+    const heroTech = document.getElementById('hero-tech');
+    if(heroProjects) heroProjects.textContent = Math.max(0, Math.round(total / 80)).toLocaleString('ru-RU');
+    if(heroTech) heroTech.textContent = Math.max(0, Math.round(executed / 40)).toLocaleString('ru-RU');
 
-                const ctx = document.getElementById('regionalChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(d => d.region),
-                        datasets: [{
-                            label: 'Исполнено (%)',
-                            data: data.map(d => d.executed_percent),
-                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки регионального графика:', error);
-            }
-        }
+    const regionList = document.getElementById('region-list');
+    if(regionList){
+      regionList.innerHTML = regional.slice(0,5).map(r=>{
+        const name = r.region || r['Область'] || '-';
+        const apps = Number(r.total || r['Всего_заявок'] || 0);
+        const sum = Number(r.total_amount || r['Общая_сумма'] || 0);
+        const shown = sum ? (sum/1_000_000_000 >=1 ? `${(sum/1_000_000_000).toFixed(1)} млрд ₸` : `${Math.round(sum/1_000_000).toLocaleString('ru-RU')} млн ₸`) : `${apps.toLocaleString('ru-RU')} өтінім`;
+        return `<div class="flex items-center justify-between"><div class="flex items-start gap-3"><div class="w-2 h-10 rounded-full bg-primary/25"></div><div><div class="font-bold text-lg md:text-xl leading-tight text-primary">${name}</div><div class="text-[11px] md:text-xs text-stone-500">${apps.toLocaleString('ru-RU')} өтінім</div></div></div><div class="font-extrabold text-base md:text-lg text-primary headline-font">${shown}</div></div>`;
+      }).join('') || '<div class="text-stone-500">Дерек табылмады</div>';
+    }
 
-        // График рисков
-        async function loadRiskChart() {
-            try {
-                const response = await fetch('/api/risk_distribution');
-                const data = await response.json();
+    const decisionCtx = document.getElementById('dashDecisionChart');
+    const monthlyCtx = document.getElementById('dashMonthlyChart');
+    if(decisionCtx){
+      if(charts.dashDecision) charts.dashDecision.destroy();
+      const labels = ['Ұсынылады','Тексеріс','Жоғары тәуекел'];
+      const counts = [
+        Number(summary.approved_count || 0),
+        Math.max(0, Number(summary.executed_count || 0) - Number(summary.approved_count || 0)),
+        Number(summary.rejected_count || 0)
+      ];
+      charts.dashDecision = new Chart(decisionCtx, {
+        type: 'bar',
+        data: { labels, datasets: [{ data: counts, backgroundColor: ['#2f7d32','#f59e0b','#e11d48'], borderRadius: 8 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true} } }
+      });
+    }
+    if(monthlyCtx){
+      if(charts.dashMonthly) charts.dashMonthly.destroy();
+      charts.dashMonthly = new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+          labels: monthly.map(m=>m.month || ''),
+          datasets: [{ label:'Өтінім', data: monthly.map(m=>Number(m.applications||0)), borderColor:'#2d5a27', backgroundColor:'rgba(45,90,39,0.12)', fill:true, tension:0.3 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+      });
+    }
+  }
 
-                const ctx = document.getElementById('riskChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.map(d => d.level === 'Normal' ? 'Норма' : 
-                                          d.level === 'Medium Risk' ? 'Средний риск' : 'Высокий риск'),
-                        datasets: [{
-                            data: data.map(d => d.count),
-                            backgroundColor: [
-                                'rgba(46, 204, 113, 0.7)',
-                                'rgba(243, 156, 18, 0.7)',
-                                'rgba(231, 76, 60, 0.7)'
-                            ],
-                            borderColor: [
-                                'rgba(46, 204, 113, 1)',
-                                'rgba(243, 156, 18, 1)',
-                                'rgba(231, 76, 60, 1)'
-                            ],
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика рисков:', error);
-            }
-        }
+  async function submitScoring(){
+    const farmName = document.getElementById('farm-name').value.trim();
+    const region = document.getElementById('region-select').value;
+    const subsidy = document.getElementById('subsidy-select').value;
+    const farmSize = Number(document.getElementById('farm-size').value || 0);
+    const revenue = Number(document.getElementById('annual-revenue').value || 0);
+    const employees = Number(document.getElementById('employees').value || 0);
+    const debt = Number(document.getElementById('debt-amount').value || 0);
+    const amount = Number(document.getElementById('requested-amount').value || 0);
+    const previous = Number(document.getElementById('previous-subsidies').value || 0);
+    const err = document.getElementById('score-error');
+    const result = document.getElementById('score-result');
+    err.classList.add('hidden');
 
-        // График по месяцам
-        async function loadMonthlyChart() {
-            try {
-                const response = await fetch('/api/monthly_trend');
-                const data = await response.json();
+    if(!farmName || !region || !subsidy || farmSize<=0 || revenue<=0 || amount<=0){
+      err.textContent = 'Міндетті өрістерді толтырыңыз';
+      err.classList.remove('hidden');
+      return;
+    }
 
-                const ctx = document.getElementById('monthlyChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.map(d => d.month_name),
-                        datasets: [{
-                            label: 'Количество заявок',
-                            data: data.map(d => d.applications),
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика по месяцам:', error);
-            }
-        }
+    const payload = {
+      farm_name: farmName,
+      region,
+      subsidy_type: subsidy,
+      farm_size_hectares: farmSize,
+      annual_revenue: revenue,
+      previous_subsidies: previous,
+      debt_amount: debt,
+      num_employees: employees,
+      requested_amount: amount,
+      features: { farm_size_hectares:farmSize, annual_revenue:revenue, previous_subsidies:previous, debt_amount:debt, num_employees:employees, requested_amount:amount }
+    };
 
-        // График по направлениям
-        async function loadDirectionChart() {
-            try {
-                const response = await fetch('/api/direction_analysis');
-                const data = await response.json();
+    result.innerHTML = '<div class="text-stone-500">Есептелуде...</div>';
+    try{
+      const resp = await fetch('/api/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+      const data = await resp.json();
+      if(!resp.ok || !data.success) throw new Error(data.error || 'Скоринг қатесі');
+      const score = Number(data.score || 0);
+      const decision = data.recommendation || 'На рассмотрении';
+      const color = decision==='Одобрена' ? '#166534' : (decision==='На рассмотрении' ? '#9a3412' : '#9f1239');
+      const bg = decision==='Одобрена' ? '#ecfdf3' : (decision==='На рассмотрении' ? '#fffbeb' : '#fff1f2');
+      const debtRatio = (debt / Math.max(revenue,1)).toFixed(2);
+      const subsidyRatio = (amount / Math.max(revenue,1)).toFixed(2);
+      const explanation = deriveFactors(score, farmSize, revenue, debt, employees, previous, amount);
+      const prosHtml = explanation.pros.map(x=>`<div class="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm text-emerald-900">${x}</div>`).join('') || '<div class="text-sm text-stone-500">Оң факторлар жоқ</div>';
+      const consHtml = explanation.cons.map(x=>`<div class="rounded-lg bg-rose-50 border border-rose-100 px-3 py-2 text-sm text-rose-900">${x}</div>`).join('') || '<div class="text-sm text-stone-500">Теріс факторлар жоқ</div>';
+      const riskProfile = buildRiskProfile(farmSize, revenue, debt, employees);
+      const scoringContext = {
+        farm_name: farmName,
+        region,
+        subsidy_type: subsidy,
+        score,
+        recommendation: decision,
+        debt_ratio: debtRatio,
+        subsidy_ratio: subsidyRatio,
+        positive_factors: explanation.pros,
+        negative_factors: explanation.cons,
+        risk_profile: riskProfile
+      };
+      saveScoringContext(scoringContext);
 
-                const ctx = document.getElementById('directionChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(d => d.direction.substring(0, 30) + '...'),
-                        datasets: [{
-                            label: 'Количество заявок',
-                            data: data.map(d => d.count),
-                            backgroundColor: 'rgba(39, 174, 96, 0.7)',
-                            borderColor: 'rgba(39, 174, 96, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            x: { beginAtZero: true }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки графика по направлениям:', error);
-            }
-        }
+      result.innerHTML = `
+        <div class="space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="text-xs uppercase tracking-wide text-stone-500 font-bold">Скоринг нәтижесі</div>
+              <div class="mt-1 text-xl md:text-2xl font-extrabold headline-font text-primary">${score}<span class="text-sm text-stone-500">/100</span></div>
+            </div>
+            <div class="shrink-0 inline-flex px-3 py-1.5 rounded-full font-bold text-sm" style="color:${color};background:${bg}">${kzDecision(decision)}</div>
+          </div>
+          <div class="h-2 rounded-full bg-emerald-100 overflow-hidden"><div class="h-full rounded-full" style="width:${score}%;background:${color};"></div></div>
 
-        // Загрузка фильтров
-        async function loadFilters() {
-            try {
-                const response = await fetch('/api/filters');
-                const filters = await response.json();
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-surface-container border border-stone-200 p-3"><div class="text-[11px] text-stone-500 uppercase font-bold">Қарыз/табыс</div><div class="text-base font-bold mt-1">${debtRatio}</div></div>
+            <div class="rounded-xl bg-surface-container border border-stone-200 p-3"><div class="text-[11px] text-stone-500 uppercase font-bold">Субсидия/табыс</div><div class="text-base font-bold mt-1">${subsidyRatio}</div></div>
+          </div>
 
-                const regionFilter = document.getElementById('regionFilter');
-                filters.regions.forEach(region => {
-                    const option = document.createElement('option');
-                    option.value = region;
-                    option.textContent = region;
-                    regionFilter.appendChild(option);
-                });
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl bg-surface-container border border-stone-200 p-3 space-y-2">
+              <div class="text-xs uppercase text-emerald-700 font-bold tracking-wide">Оң факторлар</div>
+              ${prosHtml}
+            </div>
+            <div class="rounded-xl bg-surface-container border border-stone-200 p-3 space-y-2">
+              <div class="text-xs uppercase text-rose-700 font-bold tracking-wide">Теріс факторлар</div>
+              ${consHtml}
+            </div>
+          </div>
 
-                const statusFilter = document.getElementById('statusFilter');
-                filters.statuses.forEach(status => {
-                    const option = document.createElement('option');
-                    option.value = status;
-                    option.textContent = status;
-                    statusFilter.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки фильтров:', error);
-            }
-        }
+          <div class="rounded-xl bg-surface-container border border-stone-200 p-3 text-sm space-y-1">
+            <div class="font-bold text-primary">Қысқаша түсіндірме</div>
+            <div>Бұл нәтиже жер, табыс, қарыз, қызметкерлер саны және сұралған сомаға сүйеніп есептелді.</div>
+            <div>70+ = Ұсынылады, 40–69 = Тексеріс, 0–39 = Жоғары тәуекел.</div>
+          </div>
 
-        // Загрузка таблицы
-        async function loadApplicationsTable() {
-            const region = document.getElementById('regionFilter').value;
-            const risk = document.getElementById('riskFilter').value;
-            const status = document.getElementById('statusFilter').value;
+          <div class="rounded-xl bg-surface-container border border-stone-200 p-3 space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs uppercase text-primary font-bold tracking-wide">Тәуекел талдауы</div>
+              <div class="muted-note">Проценттер және сызықтық визуализация</div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              ${riskProfile.map(item => `
+                <div class="rounded-xl bg-white p-3 border border-stone-200">
+                  <div class="text-[11px] uppercase text-stone-500 font-bold">${item.label}</div>
+                  <div class="mt-1 text-lg font-extrabold text-primary">${item.value}%</div>
+                  <div class="h-2 rounded-full bg-white overflow-hidden mt-2"><div class="h-full rounded-full bg-primary-container" style="width:${item.value}%"></div></div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="chart-wrap-sm"><canvas id="scoringRiskChart"></canvas></div>
+          </div>
+        </div>
+      `;
 
-            let url = '/api/search_applications?limit=50';
-            if (region) url += `&region=${encodeURIComponent(region)}`;
-            if (risk) url += `&risk_level=${encodeURIComponent(risk)}`;
-            if (status) url += `&status=${encodeURIComponent(status)}`;
+      renderScoringRiskChart(riskProfile);
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
+      const hist = getHistory();
+      hist.unshift({
+        id: data.application_id,
+        farm_name: farmName,
+        region,
+        category: subsidy,
+        subsidy_amount: amount,
+        requested_amount: amount,
+        score,
+        recommendation: decision,
+        model_used: Boolean(data.model_used),
+        created_at: data.created_at || new Date().toISOString()
+      });
+      saveHistory(hist.slice(0,200));
+    }catch(e){
+      result.innerHTML = '<div class="text-red-700">Есептеу мүмкін болмады</div>';
+      err.textContent = e.message || 'Қате';
+      err.classList.remove('hidden');
+    }
+  }
 
-                const tbody = document.getElementById('tableBody');
-                tbody.innerHTML = '';
+  function renderHistory(){
+    const rows = getHistory();
+    const table = document.getElementById('history-table');
+    const search = document.getElementById('history-search');
+    const regionFilter = document.getElementById('history-region');
+    const decisionFilter = document.getElementById('history-decision');
+    const clearBtn = document.getElementById('history-clear');
+    if(!table) return;
 
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="loading">Данные не найдены</td></tr>';
-                    return;
-                }
+    const total = rows.length;
+    const approved = rows.filter(r=>r.recommendation==='Одобрена').length;
+    const highRisk = rows.filter(r=>r.recommendation==='Отклонена').length;
+    const avgScore = total ? (rows.reduce((sum, row)=>sum + Number(row.score || 0), 0) / total) : 0;
+    const totalEl = document.getElementById('h-total');
+    const approvedEl = document.getElementById('h-approved');
+    const highRiskEl = document.getElementById('h-risk');
+    const avgEl = document.getElementById('h-avg');
+    if(totalEl) totalEl.textContent = total.toLocaleString('ru-RU');
+    if(approvedEl) approvedEl.textContent = approved.toLocaleString('ru-RU');
+    if(highRiskEl) highRiskEl.textContent = highRisk.toLocaleString('ru-RU');
+    if(avgEl) avgEl.textContent = `${avgScore.toFixed(1)}/100`;
 
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    
-                    const riskClass = row.Risk_Level === 'High Risk' ? 'risk-high' :
-                                     row.Risk_Level === 'Medium Risk' ? 'risk-medium' : 'risk-normal';
-                    
-                    const statusClass = row['Статус заявки'] === 'Исполнена' ? 'status-executed' :
-                                       row['Статус заявки'] === 'Одобрена' ? 'status-approved' : 'status-rejected';
-                    
-                    tr.innerHTML = `
-                        <td>${row['Номер заявки']}</td>
-                        <td>${row['Дата поступления'].substring(0, 10)}</td>
-                        <td>${row['Область']}</td>
-                        <td>${row['Направление водства'].substring(0, 30)}...</td>
-                        <td><span class="status-badge ${statusClass}">${row['Статус заявки']}</span></td>
-                        <td>${formatCurrency(row['Норматив'])}</td>
-                        <td>${formatCurrency(row['Причитающая сумма'])}</td>
-                        <td><span class="risk-badge ${riskClass}">${row.Risk_Level}</span></td>
-                        <td>${row['Кластер']}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки таблицы:', error);
-            }
-        }
+    regionFilter.innerHTML = '<option value="">Барлық өңір</option>' + [...new Set([...ALL_REGIONS, ...rows.map(r=>r.region).filter(Boolean)])].map(r=>`<option value="${r}">${r}</option>`).join('');
 
-        // События фильтров
-        document.getElementById('regionFilter').addEventListener('change', loadApplicationsTable);
-        document.getElementById('riskFilter').addEventListener('change', loadApplicationsTable);
-        document.getElementById('statusFilter').addEventListener('change', loadApplicationsTable);
+    function draw(){
+      const q = (search.value || '').toLowerCase();
+      const reg = regionFilter.value;
+      const dec = decisionFilter.value;
+      const filtered = rows.filter(r=>{
+        const okQ = !q || String(r.region||'').toLowerCase().includes(q) || String(r.farm_name||'').toLowerCase().includes(q) || String(r.category || r.subsidy_type || '').toLowerCase().includes(q);
+        const okR = !reg || r.region===reg;
+        const okD = !dec || r.recommendation===dec;
+        return okQ && okR && okD;
+      });
+      if(!filtered.length){ table.innerHTML = '<tr><td colspan="6" class="py-4 text-stone-500">Жазба жоқ</td></tr>'; return; }
+      table.innerHTML = filtered.map(r=>`<tr class="border-b border-stone-100"><td class="py-2 pr-4">${r.created_at || r.id || '-'}</td><td class="py-2 pr-4">${r.region||'-'}</td><td class="py-2 pr-4">${r.category || r.subsidy_type || '-'}</td><td class="py-2 pr-4">${r.subsidy_amount ? formatMoney(r.subsidy_amount) : (r.requested_amount ? formatMoney(r.requested_amount) : '-')}</td><td class="py-2 pr-4">${r.score ? Number(r.score).toFixed(1) : '0.0'}</td><td class="py-2"><span class="px-2 py-1 rounded ${decisionPill(r.recommendation)}">${kzDecision(r.recommendation||'')}</span></td></tr>`).join('');
+    }
+    [search, regionFilter, decisionFilter].forEach(el=>el.addEventListener('input', draw));
+    clearBtn.addEventListener('click', ()=>{ localStorage.removeItem(STORAGE_KEY); draw(); });
+    draw();
+  }
 
-        // Инициализация
-        window.addEventListener('load', () => {
-            loadDashboardStats();
-            loadRegionalChart();
-            loadRiskChart();
-            loadMonthlyChart();
-            loadDirectionChart();
-            loadFilters();
-            loadApplicationsTable();
-        });
-    </script>
+  function renderAnalytics(){
+    const summary = analyticsPayload?.summary || {};
+    const regional = analyticsPayload?.regional || [];
+    const monthly = analyticsPayload?.monthly || [];
+    const risk = analyticsPayload?.risk || [];
+
+    const setText = (id, v)=>{ const el=document.getElementById(id); if(el) el.textContent = v; };
+    setText('a-total', Number(summary.total_applications||0).toLocaleString('ru-RU'));
+    setText('a-executed', Number(summary.executed_count||0).toLocaleString('ru-RU'));
+    setText('a-approval', (Number(summary.approval_rate||0)).toFixed(1) + '%');
+    setText('a-avg', summary.average_score ? Number(summary.average_score).toFixed(1) : '0');
+
+    const regionCtx = document.getElementById('analyticsRegionChart');
+    const monthlyCtx = document.getElementById('analyticsMonthlyChart');
+    const riskCtx = document.getElementById('analyticsRiskChart');
+
+    if(regionCtx){
+      if(charts.region) charts.region.destroy();
+      charts.region = new Chart(regionCtx, {
+        type:'bar',
+        data:{ labels: regional.slice(0,10).map(r=>r.region || r['Область'] || '-'), datasets:[{ label:'Орындау %', data: regional.slice(0,10).map(r=>Number(r.success_rate || r['Процент_исполненных'] || 0)), backgroundColor:'#7bb5e0', borderRadius:8 }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,max:100} } }
+      });
+    }
+
+    if(monthlyCtx){
+      if(charts.month) charts.month.destroy();
+      charts.month = new Chart(monthlyCtx, {
+        type:'line',
+        data:{ labels: monthly.map(m=>m.month || ''), datasets:[{ label:'Өтінім саны', data: monthly.map(m=>Number(m.applications||0)), borderColor:'#2d5a27', backgroundColor:'rgba(45,90,39,0.12)', fill:true, tension:0.3 }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+      });
+    }
+
+    if(riskCtx){
+      if(charts.risk) charts.risk.destroy();
+      const labels = risk.map(r=>r.risk_level || 'Unknown');
+      const values = risk.map(r=>Number(r.count||0));
+      charts.risk = new Chart(riskCtx, {
+        type:'doughnut',
+        data:{ labels, datasets:[{ data: values, backgroundColor:['#2f7d32','#f59e0b','#e11d48','#94a3b8'] }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'} } }
+      });
+    }
+  }
+
+  function getChatHistory(){ try{return JSON.parse(localStorage.getItem(CHAT_KEY)||'[]');}catch{return [];} }
+  function saveChatHistory(rows){ localStorage.setItem(CHAT_KEY, JSON.stringify(rows.slice(-40))); }
+  function appendChat(role, content){ const box=document.getElementById('chat-box'); if(!box) return; const item=document.createElement('div'); item.className = 'bg-white border border-stone-200 rounded-xl p-3 text-sm text-stone-800 ' + (role==='user' ? 'ml-10' : 'mr-10'); item.textContent = content; box.appendChild(item); box.scrollTop = box.scrollHeight; }
+  function appendEmbeddedChat(role, content){ const box=document.getElementById('embedded-chat-box'); if(!box) return; const item=document.createElement('div'); item.className = 'bg-white border border-stone-200 rounded-xl p-3 text-sm text-stone-800 ' + (role==='user' ? 'ml-10' : 'mr-10'); item.textContent = content; box.appendChild(item); box.scrollTop = box.scrollHeight; }
+
+  async function sendChat(){
+    const input = document.getElementById('chat-input');
+    const text = (input?.value || '').trim();
+    if(!text || !input) return;
+    input.value = '';
+    const rows = getChatHistory();
+    rows.push({role:'user',content:text});
+    appendChat('user', text);
+    appendChat('assistant', 'Жауап дайындалуда...');
+    const box = document.getElementById('chat-box');
+    const loading = box ? box.lastElementChild : null;
+    try{
+      const resp = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:rows,context:getScoringContext()})});
+      const data = await resp.json();
+      const answer = resp.ok && data.success ? data.answer : (data.error || 'AI қате');
+      if(loading) loading.textContent = answer;
+      rows.push({role:'assistant',content:answer});
+      saveChatHistory(rows);
+    }catch{ if(loading) loading.textContent = 'Желі қатесі'; }
+  }
+
+  async function sendEmbeddedChat(){
+    const input = document.getElementById('embedded-chat-input');
+    const text = (input?.value || '').trim();
+    if(!text || !input) return;
+    input.value = '';
+    appendEmbeddedChat('user', text);
+    appendEmbeddedChat('assistant', 'Жауап дайындалуда...');
+    const box = document.getElementById('embedded-chat-box');
+    const loading = box ? box.lastElementChild : null;
+    try{
+      const history = [{ role:'user', content:text }];
+      const resp = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history,context:getScoringContext()})});
+      const data = await resp.json();
+      const answer = resp.ok && data.success ? data.answer : (data.error || 'AI қате');
+      if(loading) loading.textContent = answer;
+    }catch{ if(loading) loading.textContent = 'Желі қатесі'; }
+  }
+
+  function restoreChat(){
+    const box=document.getElementById('chat-box');
+    if(!box) return;
+    const h=getChatHistory();
+    if(!h.length) return;
+    box.innerHTML='';
+    h.forEach(m=>appendChat(m.role,m.content));
+  }
+
+  function initQuickQuestions(inputId='chat-input'){
+    const input=document.getElementById(inputId);
+    if(!input) return;
+    document.querySelectorAll('.quick-q').forEach(btn=>btn.addEventListener('click',()=>{ input.value = btn.textContent || ''; input.focus(); }));
+  }
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await loadAnalyticsReal();
+
+    if(ACTIVE_PAGE==='dashboard'){
+      renderDashboardFromReal();
+    }
+
+    if(ACTIVE_PAGE==='new_application'){
+      await loadRefs();
+      document.getElementById('score-btn')?.addEventListener('click', submitScoring);
+      initQuickQuestions('embedded-chat-input');
+      document.getElementById('embedded-chat-send')?.addEventListener('click', sendEmbeddedChat);
+      document.getElementById('embedded-chat-input')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendEmbeddedChat(); } });
+    }
+
+    if(ACTIVE_PAGE==='history'){
+      renderHistory();
+    }
+
+    if(ACTIVE_PAGE==='analytics'){
+      renderAnalytics();
+    }
+
+    if(ACTIVE_PAGE==='assistant'){
+      restoreChat();
+      initQuickQuestions();
+      document.getElementById('chat-send')?.addEventListener('click', sendChat);
+      document.getElementById('chat-input')?.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
+    }
+  });
+</script>
 </body>
 </html>

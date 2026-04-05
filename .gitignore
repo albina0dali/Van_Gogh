@@ -38,6 +38,13 @@ instance/
 .DS_Store
 Thumbs.db
 
+# Environment and secrets
+.env
+*.env
+
+# Logs
+*.log
+
 # Results
 results/*.csv
 
